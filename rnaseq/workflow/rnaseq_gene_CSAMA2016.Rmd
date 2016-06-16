@@ -1,5 +1,5 @@
 ---
-date: September 9, 2015
+date: July 10, 2016
 output: html_document
 bibliography: bibliography.bib
 vignette: >
@@ -21,14 +21,7 @@ vignette: >
 
 # RNA-seq workflow: gene-level exploratory analysis and differential expression 
 
-Michael Love [1], Simon Anders [2,3], Vladislav Kim [3], Wolfgang Huber [3]
-
-[1] Department of Biostatistics, Dana-Farber Cancer Institute and
-Harvard School of Public Health, Boston, US; 
-
-[2] Institute for Molecular Medicine Finland (FIMM), Helsinki, Finland;
-
-[3] European Molecular Biology Laboratory (EMBL), Heidelberg, Germany.
+## CSAMA2016 version
 
 ```{r style, echo=FALSE, message=FALSE, warning=FALSE, results="asis"}
 library("BiocStyle")
@@ -37,18 +30,6 @@ library("rmarkdown")
 options(width=100)
 opts_chunk$set(message = FALSE, error = FALSE, warning = FALSE, fig.width=5, fig.height=5)
 ```
-
-# Short links
-
-* [Counting reads](#count) 
-* [Building a DESeqDataSet](#construct)
-* [Exploratory analysis and visualization](#eda)
-* [Differential expression](#de)
-* [Plotting results](#plots)
-* [Annotating and exporting results](#annotate)
-* [Accounting for unknown batches](#batch)
-* [Time course experiments](#time)
-* [Session information and references](#ref)
 
 # Abstract
 
@@ -105,9 +86,31 @@ of the experiment see the
 and for raw data see the
 [GEO entry GSE52778](http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE52778).
 
-<a id="count"></a>
+## Goal of this workflow
 
-# Preparing count matrices
+Our goal in this workflow is to bring a summary of the 
+RNA-seq experiment into R/Bioconductor for visualization
+and statistical testing. We want to visualize the relationships
+between the samples (within and across the treatment),
+and then we want to perform statistical tests to find which
+genes are changing in their expression after treatment.
+
+An overview of the steps we will take (and alternatives) is:
+
+1. Preproccesing of FASTQ files
+    + Alignment with STAR or other software
+    + Quantification at transcript level using Sailfish, Salmon or kallisto
+2. Summarization into a gene-level count matrix
+    + Count number of fragments that can be unambiguously assigned to genes
+    + Use the `r Biocpkg("tximport")` package to import transcript quantifications
+      and summarize to the gene level.
+3. Convert the count matrix into a package-specific object, 
+   e.g. a *DESeqDataSet* for DESeq2 or a *DGEList* for edgeR
+4. Make exploratory plots, such as PCA plots and sample-sample distance plots
+5. Perform differential expression testing for all genes
+6. Make summary plots of the differential expression results
+
+# Summarizing an RNA-seq experiment as a count matrix
 
 As input, the count-based statistical methods, such as
 `r Biocpkg("DESeq2")` [@Love2014Moderated],
@@ -127,14 +130,18 @@ metagenomic datasets), or peptide sequences (with
 quantitative mass spectrometry).
 
 The values in the matrix must be raw counts of sequencing
-reads/fragments. This is important for *DESeq2*'s statistical model to
+reads/fragments. This is important for *DESeq2* or *edgeR*'s statistical model to
 hold, as only the raw counts allow assessing the measurement precision
 correctly. It is important to *never* provide counts that were
 pre-normalized for sequencing depth/library size, as the
 statistical model is most powerful when applied to raw counts, and is
 designed to account for library size differences internally.
 
+TODO note about F1000R paper and estimated counts
+
 ## Aligning reads to a reference genome
+
+TODO comparing aligning reads vs running quantifiers
 
 The computational analysis of an RNA-seq experiment begins earlier:
 we first obtain a set of FASTQ files that
@@ -175,15 +182,9 @@ for f in `cat files`; do STAR --genomeDir ../STAR/ENSEMBL.homo_sapiens.release-7
 --runThreadN 12 --outFileNamePrefix aligned/$f.; done
 ```
 
-[SAMtools](http://www.htslib.org/doc/samtools.html) [@Li2009Sequence]
-was used to generate BAM files. The `-@` flag can be used to allocate
-additional threads.
-
-```
-for f in `cat files`; do samtools view -bS aligned/$f.Aligned.out.sam \
--o aligned/$f.bam; done
-```
-
+For the latest versions of STAR, the flag `--outSAMtype BAM SortedByCoordinate`
+can be added to automatically sort the files and turn them into 
+compressed BAM files.
 The BAM files for a number of sequencing runs can then be used to
 generate count matrices, as described in the following section.
 
@@ -232,17 +233,7 @@ We load such a CSV file with *read.csv*:
 
 ```{r}
 csvfile <- file.path(dir,"sample_table.csv")
-(sampleTable <- read.csv(csvfile,row.names=1))
-```
-
-**Note:** here and elsewhere in the workflow, the parentheses `()` around the
-entire code of the last line above is an R trick to print the output of the function
-in addition to saving it to `sampleTable`. This is equivalent to assigning
-and then showing the object in two steps:
-
-```{r eval=FALSE}
 sampleTable <- read.csv(csvfile,row.names=1)
-sampleTable
 ```
 
 Once the reads have been aligned, there are a number of tools that
@@ -273,6 +264,8 @@ For more details,
 see the manuscript describing this approach [@Soneson2015Differential].
 The *tximport* package will be part of the release branch of Bioconductor
 in April 2016.
+
+TODO kill this table and generalize text
 
 ## *DESeq2* import functions
 
@@ -359,7 +352,7 @@ using a 0-length character vector.
 
 ```{r}
 gtffile <- file.path(dir,"Homo_sapiens.GRCh37.75_subset.gtf")
-(txdb <- makeTxDbFromGFF(gtffile, format="gtf", circ_seqs=character()))
+txdb <- makeTxDbFromGFF(gtffile, format="gtf", circ_seqs=character())
 ```
 
 The following line produces a *GRangesList* of all the exons grouped
@@ -367,7 +360,7 @@ by gene [@Lawrence2013Software]. Each element of the list is a
 *GRanges* object of the exons for a gene.
 
 ```{r}
-(ebg <- exonsBy(txdb, by="gene"))
+ebg <- exonsBy(txdb, by="gene")
 ```
 
 ## Read counting step
@@ -439,7 +432,10 @@ visually check the read alignments using a genome visualization tool.
 
 ## SummarizedExperiment
 
-```{r sumexp, echo=FALSE}
+This chunk of code can be run to produce a simple diagram of 
+a *SummarizedExperiment* object.
+
+```{r sumexp}
 par(mar=c(0,0,0,0))
 plot(1,1,xlim=c(0,100),ylim=c(0,100),bty="n",
      type="n",xlab="",ylab="",xaxt="n",yaxt="n")
@@ -530,12 +526,8 @@ differential expression of the count data, including
 `r Biocpkg("DSS")` [@Wu2013New],
 `r Biocpkg("EBSeq")` [@Leng2013EBSeq] and
 `r Biocpkg("BaySeq")` [@Hardcastle2010BaySeq].
-We will continue, using `r Biocpkg("DESeq2")` [@Love2014Moderated].
-The *SummarizedExperiment* object is all we
-need to start our analysis. In the following section we will show how
-to use it to create the data object used by *DESeq2*.
-
-<a id="construct"></a>
+We will continue, using `r Biocpkg("DESeq2")` [@Love2014Moderated]
+and `r Biocpkg("edgeR")` [@Robinson2009EdgeR].
 
 # The *DESeqDataSet*, sample information, and the design formula
 
@@ -682,6 +674,8 @@ library("DESeq2")
 dds <- DESeqDataSet(se, design = ~ cell + dex)
 ```
 
+TODO reorganize this
+
 ## Starting from count matrices
 
 In this section, we will show how to build an *DESeqDataSet* supposing
@@ -729,15 +723,13 @@ To now construct the *DESeqDataSet* object from the matrix of counts and the
 sample information table, we use:
 
 ```{r}
-(ddsMat <- DESeqDataSetFromMatrix(countData = countdata,
+ddsMat <- DESeqDataSetFromMatrix(countData = countdata,
                                   colData = coldata,
-                                  design = ~ cell + dex))
+                                  design = ~ cell + dex)
 ```
 
 We will continue with the object generated from the
 *SummarizedExperiment* section. 
-
-<a id="eda"></a>
 
 # Exploratory analysis and visualization
 
@@ -764,6 +756,8 @@ nrow(dds)
 dds <- dds[ rowSums(counts(dds)) > 1, ]
 nrow(dds)
 ```
+
+TODO kill this
 
 ## The rlog transformation
 
@@ -1029,8 +1023,6 @@ ggplot(mdsPois, aes(X1,X2,color=dex,shape=cell)) + geom_point(size=3)
 
 **MDS plot using the *Poisson Distance*.**
 
-<a id="de"></a>
-
 # Differential expression analysis
 
 ## Running the differential expression pipeline
@@ -1064,7 +1056,7 @@ the first level. This comparison is printed at the top of the output:
 `dex trt vs untrt`.
 
 ```{r}
-(res <- results(dds))
+res <- results(dds)
 ```
 
 As `res` is a *DataFrame* object, it carries metadata
@@ -1160,23 +1152,6 @@ package for `pkgName`.  Citing methods papers helps to support and
 reward the individuals who put time into open source software for
 genomic data analysis.
 
-## Other comparisons
-
-In general, the results for a comparison of any two levels of a
-variable can be extracted using the `contrast` argument to
-*results*. The user should specify three values: the name of the
-variable, the name of the level for the numerator, and the name of the
-level for the denominator. Here we extract results for the log2 of the
-fold change of one cell line over another:
-
-```{r}
-results(dds, contrast=c("cell", "N061011", "N61311"))
-```
-
-If results for an interaction term are desired, the `name`
-argument of *results* should be used. Please see the 
-help for the *results* function for more details.
-
 ## Multiple testing
 
 In high-throughput biology, we are careful to not use the *p* values
@@ -1242,8 +1217,6 @@ head(resSig[ order(resSig$log2FoldChange), ])
 ```{r}
 head(resSig[ order(resSig$log2FoldChange, decreasing=TRUE), ])
 ```
-
-<a id="plots"></a>
 
 # Plotting results
 
@@ -1329,120 +1302,6 @@ with(resLFC1[topGene, ], {
 })
 ```
 
-**An MA-plot of a test for large log2 fold changes.**
-The red points indicate genes for which the log2 fold change was
-significantly higher than 1 or less than -1 (treatment resulting in
-more than doubling or less than halving of the normalized counts).
-The point circled in blue indicates the gene with the lowest adjusted *p* value.
-
-Another useful diagnostic plot is the histogram of the *p* values
-(Figure below).
-This plot is best formed by excluding genes with very small counts,
-which otherwise generate spikes in the histogram.
-
-```{r histpvalue2}
-hist(res$pvalue[res$baseMean > 1], breaks=0:20/20, col="grey50", border="white")
-```
-
-**Histogram of *p* values for genes with mean normalized count larger than 1.**
-
-## Gene clustering
-
-In the sample distance heatmap made previously, the dendrogram at the
-side shows us a hierarchical clustering of the samples. Such a
-clustering can also be performed for the genes.  Since the clustering
-is only relevant for genes that actually carry a signal, one usually
-would only cluster a subset of the most highly variable genes. Here,
-for demonstration, let us select the 20 genes with the highest
-variance across samples. We will work with the *rlog* transformed
-counts:
-
-```{r}
-library("genefilter")
-topVarGenes <- head(order(rowVars(assay(rld)),decreasing=TRUE),20)
-```
-
-The heatmap becomes more interesting if we do not look at absolute
-expression strength but rather at the amount by which each gene
-deviates in a specific sample from the gene's average across all
-samples. Hence, we center each genes' values across samples,
-and plot a heatmap (Figure below). We provide a *data.frame* that instructs the
-*pheatmap* function how to label the columns.
-
-```{r genescluster}
-mat <- assay(rld)[ topVarGenes, ]
-mat <- mat - rowMeans(mat)
-df <- as.data.frame(colData(rld)[,c("cell","dex")])
-pheatmap(mat, annotation_col=df)
-```
-
-**Heatmap of relative rlog-transformed values across samples.**
-Treatment status and cell line information are shown with colored bars
-at the top of the heatmap.
-Blocks of genes that covary across patients. Note that
-a set of genes at the top of the heatmap are separating the N061011
-cell line from the others. In the center of the heatmap, we see a set
-of genes for which the dexamethasone treated samples have higher gene
-expression. 
-
-## Independent filtering
-
-The MA plot highlights an important property of RNA-seq data.  For
-weakly expressed genes, we have no chance of seeing differential
-expression, because the low read counts suffer from such high Poisson
-noise that any biological effect is drowned in the uncertainties from
-the sampling at a low rate. We can also show this by examining the ratio of
-small *p* values (say, less than 0.05) for genes binned by mean
-normalized count. We will use the results table subjected to the threshold to show
-what this looks like in a case when there are few tests with small *p*
-value.
-
-In the following code chunk, we create bins using the *quantile*
-function, bin the genes by base mean using *cut*, rename the levels of
-the bins using the middle point, calculate the ratio of *p* values
-less than 0.05 for each bin, and finally plot these ratios (Figure below).
-
-```{r sensitivityovermean, fig.width=6}
-qs <- c(0, quantile(resLFC1$baseMean[resLFC1$baseMean > 0], 0:6/6))
-bins <- cut(resLFC1$baseMean, qs)
-levels(bins) <- paste0("~",round(signif(.5*qs[-1] + .5*qs[-length(qs)],2)))
-ratios <- tapply(resLFC1$pvalue, bins, function(p) mean(p < .05, na.rm=TRUE))
-barplot(ratios, xlab="mean normalized count", ylab="ratio of small p values")
-```
-
-**The ratio of small *p* values for genes binned by mean normalized count.**
-The *p* values are from a test of log2 fold change greater than 1
-or less than -1. This plot demonstrates that genes with very low mean count
-are underpowered, and best excluded before multiple test correction.
-
-At first sight, there may seem to be little benefit in filtering out
-these genes. After all, the test found them to be non-significant
-anyway. However, these genes have an influence on the multiple testing
-adjustment, whose performance improves if such genes are removed. By
-removing the low count genes from the input to the FDR
-procedure, we can find more genes to be significant among those that
-we keep, and so improved the power of our test. This approach is known
-as *independent filtering*.
-
-The *DESeq2* software automatically performs independent filtering
-that maximizes the number of genes with adjusted *p* value
-less than a critical value (by default, `alpha` is set to 0.1).  This
-automatic independent filtering is performed by, and can be controlled
-by, the *results* function.
-
-The term *independent* highlights an important caveat. Such filtering
-is permissible only if the statistic that we filter on (here the mean
-of normalized counts across all samples) is independent of the
-actual test statistic (the *p* value) under the null hypothesis.
-Otherwise, the filtering would invalidate the
-test and consequently the assumptions of the BH procedure.
-The independent filtering software used inside
-*DESeq2* comes from the `r Biocpkg("genefilter")` package, that
-contains a reference to a paper describing the statistical foundation
-for independent filtering [@Bourgon2010Independent].
-
-<a id="annotate"></a>
-
 # Annotating and exporting results
 
 Our result table so far only contains information about Ensembl gene
@@ -1495,7 +1354,7 @@ resOrdered <- res[order(res$padj),]
 head(resOrdered)
 ```
 
-## Exporting results
+## Exporting results to CSV file
 
 You can easily save the results table in a CSV file, that you can
 then share or load with a spreadsheet program such as Excel. The call to
@@ -1509,278 +1368,7 @@ resOrderedDF <- as.data.frame(resOrdered)[1:100,]
 write.csv(resOrderedDF, file="results.csv")
 ```
 
-Another more sophisticated package for exporting results from various
-Bioconductor analysis packages is the `r Biocpkg("ReportingTools")`
-package [@Huntley2013ReportingTools].
-*ReportingTools* will automatically generate dynamic HTML documents,
-including links to external databases using gene identifiers
-and boxplots summarizing the normalized counts across groups.
-See the *ReportingTools* vignettes for full details. The simplest
-version of creating a dynamic *ReportingTools* report is performed
-with the following code:
-
-```{r eval=FALSE}
-library("ReportingTools")
-htmlRep <- HTMLReport(shortName="report", title="My report",
-                      reportDirectory="./report")
-publish(resOrderedDF, htmlRep)
-url <- finish(htmlRep)
-browseURL(url)
-```
-
-## Plotting fold changes in genomic space
-
-If we have used the *summarizeOverlaps* function to count the reads,
-then our *DESeqDataSet* object is built on top of ready-to-use
-Bioconductor objects specifying the genomic ranges of the genes. We
-can therefore easily plot our differential expression results in
-genomic space. While the *results* function by default returns a
-*DataFrame*, using the `format` argument, we can ask for *GRanges* or
-*GRangesList* output.
-
-```{r}
-(resGR <- results(dds, lfcThreshold=1, format="GRanges"))
-```
-
-We need to add the symbol again for labeling the genes on the plot:
-
-```{r}
-resGR$symbol <- mapIds(org.Hs.eg.db, names(resGR), "SYMBOL", "ENSEMBL")
-```
-
-We will use the `r Biocpkg("Gviz")` package for plotting the GRanges
-and associated metadata: the log fold changes due to dexamethasone treatment.
-
-```{r}
-library("Gviz")
-```
-
-The following code chunk specifies a window of 1 million base pairs
-upstream and downstream from the gene with the smallest *p* value.
-We create a subset of our full results, for genes within the window
-We add the gene symbol as a name, if the symbol exists or is not duplicated in
-our subset.
-
-```{r}
-window <- resGR[topGene] + 1e6
-strand(window) <- "*"
-resGRsub <- resGR[resGR %over% window]
-naOrDup <- is.na(resGRsub$symbol) | duplicated(resGRsub$symbol)
-resGRsub$group <- ifelse(naOrDup, names(resGRsub), resGRsub$symbol)
-```
-
-We create a vector specifying if the genes in this subset had a low
-false discovery rate. 
-
-```{r}
-sig <- factor(ifelse(resGRsub$padj < .1 & !is.na(resGRsub$padj),"sig","notsig"))
-```
-
-We can then plot the results using `r Biocpkg("Gviz")` functions
-(Figure below). We
-create an axis track specifying our location in the genome, a track
-that will show the genes and their names, colored by significance,
-and a data track that will draw vertical bars showing the moderated
-log fold change produced by *DESeq2*, which we know are only large
-when the effect is well supported by the information in the counts.
-
-```{r gvizplot}
-options(ucscChromosomeNames=FALSE)
-g <- GenomeAxisTrack()
-a <- AnnotationTrack(resGRsub, name="gene ranges", feature=sig)
-d <- DataTrack(resGRsub, data="log2FoldChange", baseline=0,
-               type="h", name="log2 fold change", strand="+")
-plotTracks(list(g,d,a), groupAnnotation="group", notsig="grey", sig="hotpink")
-```
-
-**log2 fold changes in genomic region surrounding the gene with smallest
-  adjusted *p* value.** Genes highlighted in pink have adjusted *p*
-  value less than 0.1.
-
-<a id="batch"></a>
-
-# Removing hidden batch effects
-
-Suppose we did not know that there were different cell lines involved
-in the experiment, only that there was treatment with
-dexamethasone. The cell line effect on the counts then would represent
-some hidden and unwanted variation that might be affecting
-many or all of the genes in the dataset. We can use statistical
-methods designed for RNA-seq from the `r Biocpkg("sva")` package [@Leek2014Svaseq] to
-detect such groupings of the samples, and then we can add these to the
-*DESeqDataSet* design, in order to account for them. The *SVA*
-package uses the term *surrogate variables* for the estimated
-variables that we want to account for in our analysis. Another
-package for detecting hidden batches is the `r Biocpkg("RUVSeq")`
-package [@Risso2014Normalization], with the acronym "Remove Unwanted Variation".
-
-```{r}
-library("sva")
-```
-
-Below we obtain a matrix of normalized counts for which the average count across
-samples is larger than 1. As we described above, we are trying to
-recover any hidden batch effects, supposing that we do not know the
-cell line information. So we use a full model matrix with the
-*dex* variable, and a reduced, or null, model matrix with only
-an intercept term. Finally we specify that we want to estimate 2
-surrogate variables. For more information read the manual page for the
-*svaseq* function by typing `?svaseq`.
-
-```{r}
-dat <- counts(dds, normalized=TRUE)
-idx <- rowMeans(dat) > 1
-dat <- dat[idx,]
-mod <- model.matrix(~ dex, colData(dds))
-mod0 <- model.matrix(~ 1, colData(dds))
-svseq <- svaseq(dat, mod, mod0, n.sv=2)
-svseq$sv
-```
-
-Because we actually do know the cell lines, we can see how well the
-SVA method did at recovering these variables (Figure below).
-
-```{r svaplot}
-par(mfrow=c(2,1),mar=c(3,5,3,1))
-stripchart(svseq$sv[,1] ~ dds$cell,vertical=TRUE,main="SV1")
-abline(h=0)
-stripchart(svseq$sv[,2] ~ dds$cell,vertical=TRUE,main="SV2")
-abline(h=0)
-```
-
-**Surrogate variables 1 and 2 plotted over cell line.**
-Here, we know the hidden source of variation (cell line), and
-therefore can see how the SVA procedure is able to identify a source
-of variation which is correlated with cell line.
-
-Finally, in order to use SVA to remove any effect on the counts from
-our surrogate variables, we simply add these two surrogate variables
-as columns to the *DESeqDataSet* and then add them to the design:
-
-```{r}
-ddssva <- dds
-ddssva$SV1 <- svseq$sv[,1]
-ddssva$SV2 <- svseq$sv[,2]
-design(ddssva) <- ~ SV1 + SV2 + dex
-```
-
-We could then produce results controlling for surrogate variables by
-running *DESeq* with the new design: 
-
-```{r svaDE, eval=FALSE}
-ddssva <- DESeq(ddssva)
-```
-
-<a id="time"></a>
-
-# Time course experiments
-
-*DESeq2* can be used to analyze time course experiments, for example
-to find those genes that react in a condition-specific manner over
-time, compared to a set of baseline samples.
-Here we demonstrate a basic time course analysis with the
- `r Biocexptpkg("fission")` data package,
-that contains gene counts for an RNA-seq time course of fission
-yeast [@Leong2014Global]. The yeast were exposed to oxidative stress, and half of the
-samples contain a deletion of the gene *atf21*.
-We use a design formula that models the strain difference at time 0,
-the difference over time, and any strain-specific differences over
-time (the interaction term `strain:minute`).
-
-```{r}
-library("fission")
-data("fission")
-ddsTC <- DESeqDataSet(fission, ~ strain + minute + strain:minute)
-```
-
-The following chunk of code performs a likelihood ratio test, where we remove
-the strain-specific differences over time. Genes with small *p* values
-from this test are those which at one or more time points after time
-0 showed a strain-specific effect. Note therefore that this will not
-give small *p* values to genes that moved up or down over time in the
-same way in both strains.
-
-```{r fissionDE}
-ddsTC <- DESeq(ddsTC, test="LRT", reduced = ~ strain + minute)
-resTC <- results(ddsTC)
-resTC$symbol <- mcols(ddsTC)$symbol
-head(resTC[order(resTC$padj),],4)
-```
-
-This is just one of the tests that can be applied to time
-series data. Another option would be to model the counts as a
-smooth function of time, and to include an interaction term of the
-condition with the smooth function. It is possible to build such a
-model using spline basis functions within R.
-
-We can plot the counts for the groups over time using
-`r CRANpkg("ggplot2")`, for the gene with the smallest adjusted *p* value,
-testing for condition-dependent time profile and accounting for
-differences at time 0 (Figure below). Keep in mind that the interaction terms are the
-*difference* between the two groups at a given time after accounting for
-the difference at time 0.
-
-```{r fissioncounts, fig.width=6, fig.height=4.5}
-data <- plotCounts(ddsTC, which.min(resTC$padj), 
-                   intgroup=c("minute","strain"), returnData=TRUE)
-ggplot(data, aes(x=minute, y=count, color=strain, group=strain)) + 
-  geom_point() + stat_smooth(se=FALSE,method="loess") +  scale_y_log10()
-```
-
-**Normalized counts for a gene with condition-specific changes over time.**
-
-Wald tests for the log2 fold changes at individual time points can be
-investigated using the `test` argument to *results*:
-
-```{r}
-resultsNames(ddsTC)
-res30 <- results(ddsTC, name="strainmut.minute30", test="Wald")
-res30[which.min(resTC$padj),]
-```
-
-We can furthermore cluster significant genes by their profiles. We
-extract a matrix of the shrunken log2 fold changes using the *coef* function:
-
-```{r}
-betas <- coef(ddsTC)
-colnames(betas)
-```
-
-We can now plot the log2 fold changes in a heatmap (Figure below). 
-
-```{r fissionheatmap}
-library("pheatmap")
-topGenes <- head(order(resTC$padj),20)
-mat <- betas[topGenes, -c(1,2)]
-thr <- 3 
-mat[mat < -thr] <- -thr
-mat[mat > thr] <- thr
-pheatmap(mat, breaks=seq(from=-thr, to=thr, length=101),
-         cluster_col=FALSE)
-```
-
-**Heatmap of log2 fold changes for genes with smallest adjusted *p* value.**
-The bottom set of genes show strong induction of expression for the
-baseline samples in minutes 15-60 (red boxes in the bottom left
-corner), but then have slight differences for the mutant strain
-(shown in the boxes in the bottom right corner).
-
-<a id="ref"></a>
-
-# Session information
-
-As the last part of this document, we call the function *sessionInfo*,
-which reports the version numbers of R and all the packages used in
-this session. It is good practice to always keep such a record of this
-as it will help to track down what has happened in case an R script
-ceases to work or gives different results because the functions have
-been changed in a newer version of one of your packages. By including
-it at the bottom of a script, your reports will become more reproducible.
-
-The session information should also *always*
-be included in any emails to the
-[Bioconductor support site](https://support.bioconductor.org) along
-with all code used in the analysis.
+## Exporting results to Glimma
 
 ```{r}
 sessionInfo()
