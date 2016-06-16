@@ -407,11 +407,18 @@ register(SerialParam())
 The following call creates the *SummarizedExperiment* object with counts:
 
 ```{r}
-se <- summarizeOverlaps(features=ebg, reads=bamfiles,
+se <- summarizeOverlaps(features=ebg, 
+                        reads=bamfiles,
                         mode="Union",
                         singleEnd=FALSE,
                         ignore.strand=TRUE,
                         fragments=TRUE )
+```
+
+And let's quickly see what we get, before we explain all the arguments:
+
+```{r}
+se
 ```
 
 We specify a number of arguments besides the `features` and the
@@ -446,7 +453,9 @@ visually check the read alignments using a genome visualization tool.
 
 ## SummarizedExperiment
 
-This chunk of code can be run to produce a simple diagram of 
+We will now explain all the parts of the object we obtained 
+from *summarizeOverlaps*
+The following chunk of code can be run to produce a simple diagram of 
 a *SummarizedExperiment* object.
 
 ```{r sumexp}
@@ -475,33 +484,34 @@ lines up with the first column of the `assay`).
 The *SummarizedExperiment* container is diagrammed in the Figure above
 and discussed in the latest Bioconductor paper [@Huber2015Orchestrating].
 In our case we have created a single matrix named "counts" that contains the fragment
-counts for each gene and sample, which is stored in `assay`. It is
-also possible to store multiple matrices, accessed with `assays`.
-The `rowRanges` for our object is the *GRangesList* we used for
-counting (one *GRanges* of exons for each row of the count matrix).
+counts for each gene and sample.
 The component parts of the *SummarizedExperiment* are accessed with an
 R function of the same name: `assay` (or `assays`), `rowRanges` and `colData`.
 
-This example code above actually only counted a small subset of fragments
-from the original experiment. Nevertheless, we
-can still investigate the resulting *SummarizedExperiment* by looking at
-the counts in the `assay` slot, the phenotypic data about the samples in
-`colData` slot (in this case an empty *DataFrame*), and the data about the
-genes in the `rowRanges` slot.
+The counts are accessed using `assay`: 
 
 ```{r}
-se
-dim(se)
-assayNames(se)
-head(assay(se), 3)
-colSums(assay(se))
+head( assay(se) )
 ```
 
-The `rowRanges`, when printed, only shows the first *GRanges*, and tells us
-there are 19 more elements:
+We can ask the dimension of the *SummarizedExperiment* (the dimension of the
+assay matrix), simply with `dim`:
+
+```{r}
+dim(se)
+nrow(se)
+ncol(se)
+```
+
+It is also possible to store multiple matrices, accessed with `assays`.
+
+The `rowRanges` for our object is the *GRangesList* we used for
+counting (one *GRanges* of exons for each row of the count matrix).
 
 ```{r}
 rowRanges(se)
+length(rowRanges(se))
+rowRanges(se)[[1]]
 ```
 
 The `rowRanges` also contains metadata about the construction
@@ -512,22 +522,34 @@ function, `str`, to display the metadata compactly:
 str(metadata(rowRanges(se)))
 ```
 
-The `colData`:
+The `colData` stores the metadata about the samples:
 
 ```{r}
 colData(se)
 ```
 
-The `colData` slot, so far empty, should contain all the metadata.
+The `colData` slot is so far empty! 
+
 Because we used a column of `sampleTable` to produce the `bamfiles`
 vector, we know the columns of `se` are in the same order as the
-rows of `sampleTable`. We can assign the `sampleTable` as the
+rows of `sampleTable`. Take a moment to convince yourself this is true:
+
+```{r}
+colnames(se)
+bamfiles
+sampleTable$Run
+```
+
+We can assign the `sampleTable` as the
 `colData` of the summarized experiment, by converting
 it into a *DataFrame* and using the assignment function:
 
 ```{r}
-(colData(se) <- DataFrame(sampleTable))
+colData(se) <- DataFrame(sampleTable)
+colData(se)
 ```
+
+We are now finished exploring the parts of the *SummarizedExperiment*.
 
 ## Branching point
 
@@ -540,8 +562,14 @@ differential expression of the count data, including
 `r Biocpkg("DSS")` [@Wu2013New],
 `r Biocpkg("EBSeq")` [@Leng2013EBSeq] and
 `r Biocpkg("BaySeq")` [@Hardcastle2010BaySeq].
+
 We will continue, using `r Biocpkg("DESeq2")` [@Love2014Moderated]
 and `r Biocpkg("edgeR")` [@Robinson2009EdgeR].
+Each of these packages has a specific class of object used
+to store the summarization of the RNA-seq experiment, 
+and the intermediate quantities that are calculated during
+the statistical analysis of the data.
+*DESeq2* uses a *DESeqDataSet* and *edgeR* uses a *DGEList*.
 
 # The *DESeqDataSet*, sample information, and the design formula
 
@@ -578,37 +606,61 @@ in the analysis.
 
 The simplest design formula for differential expression would be
 `~ condition`, where `condition` is a column in `colData(dds)` that
-specifies which of two (or more groups) the samples belong to.  For
-the airway experiment, we will specify `~ cell + dex`
-meaning that we want to test for the effect of dexamethasone (`dex`)
-controlling for the effect of different cell line (`cell`). We can see
-each of the columns just using the `$` directly on the
-*SummarizedExperiment* or *DESeqDataSet*:
+specifies which of two (or more groups) the samples belong to.  
+
+However, let's remind ourselves of the experimental design of the experiment:
 
 ```{r}
-se$cell
+colData(se)
+```
+
+We have treated and untreated samples (as indicated by `dex`):
+
+```{r}
 se$dex
 ```
 
-**Note:** it is prefered in R that the first level of a factor be the
-reference level (e.g. control, or untreated samples), so we can
-*relevel* the `dex` factor like so: 
+We also have four different cell lines:
+
+```{r}
+se$cell 
+```
+
+We want to compare the differences in gene expression that can 
+be associated with dexamethasone treatment, but we also want
+to control for differences across the four cell lines.
+The design which accomplishes this is to write `~ cell + dex`.
+By including `cell`, terms will be added to the model
+which account for differences across cell, and by adding `dex`
+we get a single term which explains the differences across
+treated and untreated samples.
+
+**Note:** it will be helpful for us if the first level of a factor be the
+reference level (e.g. control, or untreated samples).
+The reason is that, by specifying this, functions further
+in the pipeline can be used and will give comparisons such as,
+treatment vs control, without needing to specify additional arguments.
+
+We can *relevel* the `dex` factor like so: 
 
 ```{r}
 se$dex <- relevel(se$dex, "untrt")
 se$dex
 ```
 
-For running *DESeq2* models, you can use R's formula notation to
+It is not important for us to *relevel* the `cell` variable,
+nor is there a clear reference level for cell line.
+
+For running *DESeq2* or *edgeR* models, you can use R's formula notation to
 express any fixed-effects experimental design.
-Note that *DESeq2* uses the same formula notation as, for instance, the *lm*
+Note that these packages use the same formula notation as, for instance, the *lm*
 function of base R. If the research aim is to determine for which
 genes the effect of treatment is different across groups, then
 interaction terms can be included and tested using a design such as
-`~ group + treatment + group:treatment`. See the manual page for
-`?results` for more examples. We will show how to use an interaction
-term to test for condition-specific changes over time in a 
-time course example below.
+`~ group + treatment + group:treatment`. See the vignettes of *DESeq2* and
+*edgeR* for more examples.
+
+TODO shorten this
 
 In the following sections, we will demonstrate the construction of the
 *DESeqDataSet* from two starting points:
