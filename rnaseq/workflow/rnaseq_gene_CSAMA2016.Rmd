@@ -553,6 +553,12 @@ colData(se)
 
 We are now finished exploring the parts of the *SummarizedExperiment*.
 
+## Counting with featureCounts in Rsubread
+
+```{r}
+library("Rsubread")
+```
+
 ## Branching point
 
 At this point, we have counted the fragments which overlap the genes
