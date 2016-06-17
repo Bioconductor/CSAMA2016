@@ -11,8 +11,10 @@ vignette: >
 
 <!--
      # a list of all required libraries:
-     reqlibs = sub(".*library\\(\"(.*?)\"\\).*","\\1",grep("library\\(",readLines("rnaseqGene.Rmd"),value=TRUE))
+     reqlibs = sub(".*library\\(\"(.*?)\"\\).*","\\1",
+       grep("library\\(",readLines("rnaseq_gene_CSAMA2016.Rmd"),value=TRUE))
      find.package(reqlibs)
+     cat(paste(reqlibs, collapse="\n"))
 -->
 
 <script type="text/javascript"
@@ -660,7 +662,7 @@ interaction terms can be included and tested using a design such as
 `~ group + treatment + group:treatment`. See the vignettes of *DESeq2* and
 *edgeR* for more examples.
 
-TODO shorten this
+# TODO shorten the following a lot
 
 In the following sections, we will demonstrate the construction of the
 *DESeqDataSet* from two starting points:
@@ -740,7 +742,7 @@ library("DESeq2")
 dds <- DESeqDataSet(se, design = ~ cell + dex)
 ```
 
-TODO reorganize this
+# TODO reorganize this
 
 ## Starting from count matrices
 
@@ -823,7 +825,34 @@ dds <- dds[ rowSums(counts(dds)) > 1, ]
 nrow(dds)
 ```
 
-TODO kill this
+# TODO kill this and replace
+
+some temporary code written on June 17 to test we have necessary packages
+
+```{r}
+library("DESeq2")
+dds <- DESeqDataSet(se, design = ~ cell + dex)
+vsd <- vst(dds)
+plotPCA(vsd, "dex")
+library("pheatmap")
+pheatmap(assay(vsd)[1:50,])
+```
+
+```{r}
+library("edgeR")
+y <- DGEList(counts=assay(se), 
+             samples=colData(se), 
+             genes=data.frame(gene.id=rownames(se)))
+y <- calcNormFactors(y)
+design <- model.matrix(~ cell + dex, colData(se))
+y <- estimateDisp(y, design)
+fit <- glmFit(y, design)
+lrt <- glmLRT(fit, coef=ncol(design))
+topTags(lrt)
+plotMDS(y)
+```
+
+
 
 ## The rlog transformation
 
@@ -1375,20 +1404,17 @@ IDs, but alternative gene names may be more informative for
 collaborators.  Bioconductor's annotation packages help with mapping
 various ID schemes to each other.
 We load the `r Biocpkg("AnnotationDbi")` package and the annotation package
-`r Biocannopkg("org.Hs.eg.db")`:
+`r Biocannopkg("Homo.sapiens")`:
 
 ```{r}
 library("AnnotationDbi")
-library("org.Hs.eg.db")
+library("Homo.sapiens")
 ```
 
-This is the organism annotation package ("org") for
-*Homo sapiens* ("Hs"), organized as an *AnnotationDbi*
-database package ("db"), using Entrez Gene IDs ("eg") as primary key.
 To get a list of all available key types, use:
 
 ```{r}
-columns(org.Hs.eg.db)
+columns(Homo.sapiens)
 ```
 
 We can use the *mapIds* function to add individual columns to our results
@@ -1401,12 +1427,12 @@ first one that occurs in the database.
 To add the gene symbol and Entrez ID, we call *mapIds* twice.
 
 ```{r}
-res$symbol <- mapIds(org.Hs.eg.db,
+res$symbol <- mapIds(Homo.sapiens,
                      keys=row.names(res),
                      column="SYMBOL",
                      keytype="ENSEMBL",
                      multiVals="first")
-res$entrez <- mapIds(org.Hs.eg.db,
+res$entrez <- mapIds(Homo.sapiens,
                      keys=row.names(res),
                      column="ENTREZID",
                      keytype="ENSEMBL",
@@ -1435,6 +1461,18 @@ write.csv(resOrderedDF, file="results.csv")
 ```
 
 ## Exporting results to Glimma
+
+```{r}
+library("Glimma")
+glMDPlot(lrt, 
+         counts=y$counts, 
+         anno=y$genes, 
+         groups=y$samples$dex, 
+         samples=colnames(y), 
+         id.column="gene.id")
+```
+
+## Session information
 
 ```{r}
 sessionInfo()
