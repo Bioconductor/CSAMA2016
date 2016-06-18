@@ -555,8 +555,21 @@ We are now finished exploring the parts of the *SummarizedExperiment*.
 
 ## Counting with featureCounts in Rsubread
 
+Another option for counting reads or fragments within R/Bioconductor
+is the `r Biocpkg("Rsubread")` package which contains the *featureCounts*
+function [@Liao2014FeatureCounts]. 
+This is very simple to use and very fast, and returns the count
+matrix as part of the result. See `?featureCounts` for more information on 
+its usage, including how to sort the BAM files for fastest counting.
+
 ```{r}
 library("Rsubread")
+fc <- featureCounts(files=filenames, 
+                    annot.ext=gtffile, 
+                    isGTFAnnotationFile=TRUE,
+                    isPairedEnd=TRUE)
+colnames(fc$counts) <- sampleTable$Run
+head(fc$counts)
 ```
 
 ## Branching point
@@ -668,18 +681,11 @@ interaction terms can be included and tested using a design such as
 `~ group + treatment + group:treatment`. See the vignettes of *DESeq2* and
 *edgeR* for more examples.
 
-# TODO shorten the following a lot
-
 In the following sections, we will demonstrate the construction of the
 *DESeqDataSet* from two starting points:
 
 * from a *SummarizedExperiment* object 
 * from a count matrix and a sample information table
-
-For a full example of using the *HTSeq* Python package for read
-counting, please see the `r Biocexptpkg("pasilla")` vignette.  For an
-example of generating the *DESeqDataSet* from files produced by
-*htseq-count*, please see the `r Biocpkg("DESeq2")` vignette.
 
 ## Starting from *SummarizedExperiment*
 
@@ -697,20 +703,21 @@ data("airway")
 se <- airway
 ```
 
+This *SummarizedExperiment* contains many rows (genes)
+with zero or very few reads. In order to streamline the
+workflow, which uses multiple packages, we will remove 
+those genes which have a total count of less than 5:
+
+```{}
+se <- se[ rowSums(assay(se)) >= 5, ]
+```
+
 Again, we want to specify that `untrt` is the reference level for the
 dex variable:
 
 ```{r}
 se$dex <- relevel(se$dex, "untrt")
 se$dex
-```
-
-We can quickly check the millions of fragments that uniquely aligned
-to the genes (the second argument of *round* tells how many decimal
-points to keep).
-
-```{r}
-round( colSums(assay(se)) / 1e6, 1 )
 ```
 
 Supposing we have constructed a *SummarizedExperiment* using
@@ -740,15 +747,10 @@ we can construct a *DESeqDataSet* object from it that will then form
 the starting point of the analysis.
 We add an appropriate design for the analysis:
 
-```{r}
+```{r message=FALSE}
 library("DESeq2")
-```
-
-```{r}
 dds <- DESeqDataSet(se, design = ~ cell + dex)
 ```
-
-# TODO reorganize this
 
 ## Starting from count matrices
 
@@ -802,154 +804,56 @@ ddsMat <- DESeqDataSetFromMatrix(countData = countdata,
                                   design = ~ cell + dex)
 ```
 
-We will continue with the object generated from the
-*SummarizedExperiment* section. 
+## Creating a DGEList for use with edgeR
+
+It is just as easy to create a *DGEList* object using the 
+count matrix and information about samples. We can additionally
+add information about the genes:
+
+```{r message=FALSE}
+library("edgeR")
+genetable <- data.frame(gene.id=rownames(se))
+y <- DGEList(counts=countdata, 
+             samples=coldata, 
+             genes=genetable)
+```
 
 # Exploratory analysis and visualization
 
-There are two separate paths in this workflow; the one we will
-see first involves *transformations of the counts*
-in order to visually explore sample relationships.
-In the second part, we will go back to the original raw counts
-for *statistical testing*. This is critical because
+There are two separate paths in this workflow:
+
+1. *visually exploring* sample relationships, in which
+   we will discuss transformation of the counts for 
+   computing distances or making plots
+2. *statistical testing* for differences attributable to 
+   treatment, controlling for cell line effects
+
+This is critical because
 the statistical testing methods rely on original count data
 (not scaled or transformed) for calculating the precision of measurements. 
 
-## Pre-filtering the dataset
+# TODO restructure!
 
-Our count matrix with our *DESeqDataSet* contains many rows with only zeros, and
-additionally many rows with only a few fragments total. In
-order to reduce the size of the object, and to increase the speed of
-our functions, we can remove the rows that have no or nearly no
-information about the amount of gene expression. Here we remove rows
-of the *DESeqDataSet* that have no counts, or only a single count
-across all samples:
-
-```{r}
-nrow(dds)
-dds <- dds[ rowSums(counts(dds)) > 1, ]
-nrow(dds)
-```
-
-# TODO kill this and replace
+## Transformations
 
 some temporary code written on June 17 to test we have necessary packages
 
 ```{r}
-library("DESeq2")
 dds <- DESeqDataSet(se, design = ~ cell + dex)
 vsd <- vst(dds)
 plotPCA(vsd, "dex")
-library("pheatmap")
-pheatmap(assay(vsd)[1:50,])
 ```
 
+# TODO
+
+edgeR:
+
 ```{r}
-library("edgeR")
-y <- DGEList(counts=assay(se), 
-             samples=colData(se), 
-             genes=data.frame(gene.id=rownames(se)))
 y <- calcNormFactors(y)
-design <- model.matrix(~ cell + dex, colData(se))
-y <- estimateDisp(y, design)
-fit <- glmFit(y, design)
-lrt <- glmLRT(fit, coef=ncol(design))
-topTags(lrt)
 plotMDS(y)
 ```
 
-
-
-## The rlog transformation
-
-Many common statistical methods for exploratory analysis of
-multidimensional data, for example clustering and *principal
-components analysis* (PCA), work best for data that generally has the
-same range of variance at different ranges of the mean values. When
-the expected amount of variance is approximately the same across
-different mean values, the data is said to be *homoskedastic*.  For
-RNA-seq raw counts, however, the variance grows with the mean.  For
-example, if one performs PCA directly on a matrix of
-size-factor-normalized read counts, the result typically depends only
-on the few most strongly expressed genes because they show the largest
-absolute differences between samples.  A simple and often used
-strategy to avoid this is to take the logarithm of the normalized
-count values plus a small pseudocount; however, now the genes with the
-very lowest counts will tend to dominate the results because, due to
-the strong Poisson noise inherent to small count values, and the fact
-that the logarithm amplifies differences for the smallest values,
-these low count genes will show the strongest relative differences
-between samples.
-
-As a solution, *DESeq2* offers transformations for count data that
-stabilize the variance across the mean. One such transformation is the 
-*regularized-logarithm transformation* or *rlog* [@Love2014Moderated].
-For genes with high counts, the rlog 
-transformation will give similar result to the ordinary log2
-transformation of normalized counts.
-For genes with lower counts, however, the values are
-shrunken towards the genes' averages across all samples. Using 
-an empirical Bayesian prior on inter-sample differences in the form of
-a *ridge penalty*, the rlog-transformed data
-then becomes approximately *homoskedastic*, and can be used directly for
-computing distances between samples and making PCA plots.
-Another transformation,
-the *variance stabilizing transformation* [@Anders2010Differential],
-is discussed alongside the *rlog* in the *DESeq2* vignette. 
-
-**Note:** the rlog transformation is provided for applications *other*
-than differential testing. For differential testing we recommend the
-*DESeq* function applied to raw counts, as described later
-in this workflow, which also takes into account the dependence of the
-variance of counts on the mean value during the dispersion estimation
-step.
-
-The function *rlog* returns a *SummarizedExperiment*
-object that contains the rlog-transformed values in its *assay* slot.
-
-```{r rlog}
-rld <- rlog(dds, blind=FALSE)
-head(assay(rld), 3)
-```
-
-We specify `blind=FALSE`, which means that differences between cell
-lines and treatment should not add to the
-variance-mean profile of the experiment.
-However, the experimental design is not used directly in the
-transformation, only in estimating the global amount of
-variability in the counts. For a fully *unsupervised* transformation, one can set
-`blind=TRUE` (which is the default).
-
-**Note:** for large datasets (hundreds of samples), the
-variance stabilizing transformation will be faster to compute.
-
-To show the effect of the transformation, in the Figure below
-we plot the first sample
-against the second, first simply using the *log2* function (after adding
-1, to avoid taking the log of zero), and then using the rlog-transformed
-values. For the *log2* approach, we need to first estimate *size factors* to
-account for sequencing depth, and then specify `normalized=TRUE`.
-Sequencing depth correction is done automatically for the *rlog*
-method (and for *varianceStabilizingTransformation*).
-
-```{r rldplot, fig.width=7, fig.height=3.75}
-par( mfrow = c( 1, 2 ) )
-dds <- estimateSizeFactors(dds)
-plot(log2(counts(dds, normalized=TRUE)[,1:2] + 1),
-     pch=16, cex=0.3)
-plot(assay(rld)[,1:2],
-     pch=16, cex=0.3)
-```
-
-**Scatterplot of transformed counts from two samples**. Shown are
-scatterplots using the log2
-transform of normalized counts (left side) and using the rlog (right side).
-
-We can see how genes with low counts (bottom left-hand corner)
-seem to be excessively variable
-on the ordinary logarithmic scale, while the rlog transform compresses
-differences for the low count genes for which the data provide little
-information about differential expression.
+# TODO kill this?
 
 ## Sample distances
 
@@ -966,7 +870,7 @@ expects the different samples to be rows of its argument, and
 different dimensions (here, genes) to be columns.
 
 ```{r}
-sampleDists <- dist( t( assay(rld) ) )
+sampleDists <- dist(t(assay(vsd)))
 sampleDists
 ```
 
@@ -1069,7 +973,7 @@ See the *ggplot2* [documentation](http://docs.ggplot2.org/current/)
 for more details on using *ggplot*.
 
 ```{r}
-(data <- plotPCA(rld, intgroup = c( "dex", "cell"), returnData=TRUE))
+data <- plotPCA(rld, intgroup = c( "dex", "cell"), returnData=TRUE)
 percentVar <- round(100 * attr(data, "percentVar"))
 ```
 
@@ -1126,7 +1030,7 @@ ggplot(mdsPois, aes(X1,X2,color=dex,shape=cell)) + geom_point(size=3)
 
 # Differential expression analysis
 
-## Running the differential expression pipeline
+## Performing differential expression testing with DESeq2
 
 As we have already specified an experimental design when we created
 the *DESeqDataSet*, we can run the differential expression pipeline on
@@ -1246,6 +1150,33 @@ values can be assigned `NA` if the gene was excluded from analysis
 because it contained an extreme count outlier. For more information,
 see the outlier detection section of the *DESeq2* vignette.
 
+## Performing differential expression testing with edgeR
+
+```{r}
+design <- model.matrix(~ cell + dex, colData(se))
+y <- calcNormFactors(y)
+y <- estimateDisp(y, design)
+fit <- glmFit(y, design)
+lrt <- glmLRT(fit, coef=ncol(design))
+tt <- topTags(lrt)
+tt
+```
+
+We can compare to see how the results between the two software
+overlap:
+
+```{r}
+tt.all <- topTags(lrt, n=nrow(y), sort.by="none")
+table(DESeq2=res$padj < 0.1, edgeR=tt.all$table$FDR < 0.1)
+```
+
+Ranks:
+
+```{r}
+common <- !is.na(res$padj)
+plot(rank(res$padj[common]), rank(tt.all$table$FDR[common]), cex=.1)
+```
+
 If you use the results from an R analysis package in published
 research, you can find the proper citation for the software by typing
 `citation("pkgName")`, where you would substitute the name of the
@@ -1267,6 +1198,8 @@ test succeeded in reporting a *p* value:
 sum(res$pvalue < 0.05, na.rm=TRUE)
 sum(!is.na(res$pvalue))
 ```
+
+# TODO turn this into a code chunk
 
 Now, assume for a moment that the null hypothesis is true for all
 genes, i.e., no gene is affected by the treatment with
@@ -1331,6 +1264,8 @@ topGene <- rownames(res)[which.min(res$padj)]
 plotCounts(dds, gene=topGene, intgroup=c("dex"))
 ```
 
+# TODO kill all this extra
+
 **Normalized counts for a single gene over treatment group.**
 
 We can also make custom plots using the *ggplot* function from the
@@ -1363,11 +1298,13 @@ ggplot(data, aes(x=dex, y=count, color=cell, group=cell)) +
 Note that the *DESeq* test actually takes into account the cell line
 effect, so this figure more closely depicts the difference being tested.
 
+## MA plot with DESeq2
+
 An *MA-plot* [@Dudoit2002Statistical] provides a useful overview for an experiment with a
 two-group comparison (Figure below).
 
 ```{r plotma}
-plotMA(res, ylim=c(-5,5))
+DESeq2::plotMA(res, ylim=c(-5,5))
 ```
 
 **An MA-plot of changes induced by treatment.**
@@ -1387,20 +1324,10 @@ of moderated fold changes, please see the *DESeq2* paper
 large average normalized count contain sufficient information to yield
 a significant call.
 
-We can also make an MA-plot for the results table in which we raised
-the log2 fold change threshold (Figure below).
-We can label individual points on the MA-plot as well. Here we use the
-*with* R function to plot a circle and text for a selected row of the
-results object. Within the *with* function, only the `baseMean` and
-`log2FoldChange` values for the selected rows of `res` are used.
+## MA / Smear plot with edgeR
 
-```{r plotmalabel}
-plotMA(resLFC1, ylim=c(-5,5))
-topGene <- rownames(resLFC1)[which.min(resLFC1$padj)]
-with(resLFC1[topGene, ], {
-  points(baseMean, log2FoldChange, col="dodgerblue", cex=2, lwd=2)
-  text(baseMean, log2FoldChange, topGene, pos=2, col="dodgerblue")
-})
+```{r}
+plotSmear(lrt)
 ```
 
 # Annotating and exporting results
