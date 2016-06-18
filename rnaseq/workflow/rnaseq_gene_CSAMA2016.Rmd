@@ -379,7 +379,7 @@ ebg <- exonsBy(txdb, by="gene")
 ebg
 ```
 
-## Read counting with summarizeOverlaps
+## Counting with summarizeOverlaps
 
 After these preparations, the actual counting is easy. The function
 *summarizeOverlaps* from the `r Biocpkg("GenomicAlignments")`
@@ -476,12 +476,14 @@ polygon(c(45,47,47,45),c(75,75,95,95),col="palegreen3",border=NA)
 text(67.5,85,"colData")
 ```
 
-**The component parts of a *SummarizedExperiment* object.** The `assay` (pink
-block) contains the matrix of counts, the `rowRanges` (blue block) contains
-information about the genomic ranges and the `colData` (green block)
-contains information about the samples. The highlighted line in each
-block represents the first row (note that the first row of `colData`
-lines up with the first column of the `assay`). 
+The `assay` (pink block) contains the matrix of counts, 
+the `rowRanges` (blue block) contains information about 
+the genomic ranges, and 
+the `colData` (green block) contains information about 
+the samples. 
+The highlighted line in each block represents the first row 
+(note that the first row of `colData` lines up with the 
+first column of the `assay`). 
 
 The *SummarizedExperiment* container is diagrammed in the Figure above
 and discussed in the latest Bioconductor paper [@Huber2015Orchestrating].
@@ -561,6 +563,10 @@ function [@Liao2014FeatureCounts].
 This is very simple to use and very fast, and returns the count
 matrix as part of the result. See `?featureCounts` for more information on 
 its usage, including how to sort the BAM files for fastest counting.
+
+When you run *featureCounts* you will see a large logo
+printed to your screen as well as other information
+displayed live as the software is counting. 
 
 ```{r}
 library("Rsubread")
@@ -703,12 +709,14 @@ data("airway")
 se <- airway
 ```
 
+## Pre-filtering rows with very small counts
+
 This *SummarizedExperiment* contains many rows (genes)
-with zero or very few reads. In order to streamline the
+with zero or very small counts. In order to streamline the
 workflow, which uses multiple packages, we will remove 
 those genes which have a total count of less than 5:
 
-```{}
+```{r}
 se <- se[ rowSums(assay(se)) >= 5, ]
 ```
 
@@ -816,7 +824,14 @@ genetable <- data.frame(gene.id=rownames(se))
 y <- DGEList(counts=countdata, 
              samples=coldata, 
              genes=genetable)
+names(y)
 ```
+
+Just like the *SummarizedExperiment* and the *DESeqDataSet*
+the *DGEList* contains all the information we need to know:
+the count matrix, information about the samples (columns 
+of the count matrix), and information about the genes 
+(rows of the count matrix).
 
 # Exploratory analysis and visualization
 
@@ -832,111 +847,13 @@ This is critical because
 the statistical testing methods rely on original count data
 (not scaled or transformed) for calculating the precision of measurements. 
 
-# TODO restructure!
-
 ## Transformations
 
-some temporary code written on June 17 to test we have necessary packages
+# TODO write some code about VST
 
 ```{r}
-dds <- DESeqDataSet(se, design = ~ cell + dex)
 vsd <- vst(dds)
-plotPCA(vsd, "dex")
 ```
-
-# TODO
-
-edgeR:
-
-```{r}
-y <- calcNormFactors(y)
-plotMDS(y)
-```
-
-# TODO kill this?
-
-## Sample distances
-
-A useful first step in an RNA-seq analysis is often to assess overall
-similarity between samples: Which samples are similar to each other,
-which are different? Does this fit to the expectation from the
-experiment's design?
-
-We use the R function *dist* to calculate the Euclidean distance
-between samples. To ensure we have a roughly equal contribution from
-all genes, we use it on the rlog-transformed data. We need to
-transpose the matrix of values using *t*, because the *dist* function
-expects the different samples to be rows of its argument, and
-different dimensions (here, genes) to be columns.
-
-```{r}
-sampleDists <- dist(t(assay(vsd)))
-sampleDists
-```
-
-We visualize the distances in a heatmap in a Figure below, using the function
-*pheatmap* from the `r CRANpkg("pheatmap")` package.
-
-```{r}
-library("pheatmap")
-library("RColorBrewer")
-```
-
-In order to plot the sample distance matrix with the rows/columns
-arranged by the distances in our distance matrix,
-we manually provide `sampleDists` to the `clustering_distance`
-argument of the *pheatmap* function.
-Otherwise the *pheatmap* function would assume that the matrix contains
-the data values themselves, and would calculate distances between the
-rows/columns of the distance matrix, which is not desired.
-We also manually specify a blue color palette using the
-*colorRampPalette* function from the `r CRANpkg("RColorBrewer")` package.
-
-```{r distheatmap, fig.width=6, fig.height=4.5}
-sampleDistMatrix <- as.matrix( sampleDists )
-rownames(sampleDistMatrix) <- paste( rld$dex, rld$cell, sep="-" )
-colnames(sampleDistMatrix) <- NULL
-colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
-pheatmap(sampleDistMatrix,
-         clustering_distance_rows=sampleDists,
-         clustering_distance_cols=sampleDists,
-         col=colors)
-```
-
-**Heatmap of sample-to-sample distances using the rlog-transformed values.**
-
-Note that we have changed the row names of the distance matrix to
-contain treatment type and patient number instead of sample ID, so
-that we have all this information in view when looking at the heatmap.
-
-Another option for calculating sample distances is to use the
-*Poisson Distance* [@Witten2011Classification], implemented in the
-`r CRANpkg("PoiClaClu")` package.
-This measure of dissimilarity between counts
-also takes the inherent variance
-structure of counts into consideration when calculating the distances
-between samples. The *PoissonDistance* function takes the original
-count matrix (not normalized) with samples as rows instead of columns,
-so we need to transpose the counts in `dds`.
-
-```{r}
-library("PoiClaClu")
-poisd <- PoissonDistance(t(counts(dds)))
-```
-
-We plot the heatmap in a Figure below.
-
-```{r poisdistheatmap, fig.width=6, fig.height=4.5}
-samplePoisDistMatrix <- as.matrix( poisd$dd )
-rownames(samplePoisDistMatrix) <- paste( rld$dex, rld$cell, sep="-" )
-colnames(samplePoisDistMatrix) <- NULL
-pheatmap(samplePoisDistMatrix,
-         clustering_distance_rows=poisd$dd,
-         clustering_distance_cols=poisd$dd,
-         col=colors)
-```
-
-**Heatmap of sample-to-sample distances using the *Poisson Distance*.**
 
 ## PCA plot
 
@@ -956,16 +873,10 @@ variance (although each of these remaining dimensions will explain
 less than the two that we see). 
 
 ```{r plotpca, fig.width=6, fig.height=4.5}
-plotPCA(rld, intgroup = c("dex", "cell"))
+plotPCA(vsd, "dex")
 ```
 
-**PCA plot using the rlog-transformed values.** Each unique combination of
-treatment and cell line is given its own color.
-
-Here, we have used the function *plotPCA* that comes with *DESeq2*.
-The two terms specified by `intgroup` are the interesting groups for
-labeling the samples; they tell the function to use them to choose
-colors. We can also build the PCA plot from scratch using the
+We can also build the PCA plot from scratch using the
 `r CRANpkg("ggplot2")` package [@Wickham2009Ggplot2].
 This is done by asking the *plotPCA* function
 to return the data used for plotting rather than building the plot.
@@ -973,7 +884,7 @@ See the *ggplot2* [documentation](http://docs.ggplot2.org/current/)
 for more details on using *ggplot*.
 
 ```{r}
-data <- plotPCA(rld, intgroup = c( "dex", "cell"), returnData=TRUE)
+data <- plotPCA(vsd, intgroup = c( "dex", "cell"), returnData=TRUE)
 percentVar <- round(100 * attr(data, "percentVar"))
 ```
 
@@ -981,17 +892,13 @@ We can then use this data to build up a second plot in a Figure below, specifyin
 color of the points should reflect dexamethasone treatment and the
 shape should reflect the cell line.
 
-```{r}
+```{r ggplotpca, message=FALSE, fig.width=6, fig.height=4.5}
 library("ggplot2")
-```
-
-```{r ggplotpca, fig.width=6, fig.height=4.5}
 ggplot(data, aes(PC1, PC2, color=dex, shape=cell)) + geom_point(size=3) +
   xlab(paste0("PC1: ",percentVar[1],"% variance")) +
   ylab(paste0("PC2: ",percentVar[2],"% variance"))
 ```
 
-**PCA plot using the rlog-transformed values with custom *ggplot2* code.**
 Here we specify cell line (plotting symbol) and dexamethasone treatment (color).
 
 From the PCA plot, we see that the differences between cells (the
@@ -1004,29 +911,39 @@ this design by assigning the formula `~ cell + dex` earlier.
 
 ## MDS plot
 
-Another plot, very similar to the PCA plot, can be made using the 
-*multidimensional scaling* (MDS) function in base R. This is useful when we
-don't have a matrix of data, but only a matrix of distances. Here we
-compute the MDS for the distances calculated from the *rlog*
-transformed counts and plot these in a Figure below.
+Another plot, very similar to the PCA plot, is a 
+*multidimensional scaling* (MDS) plot. 
 
-```{r mdsrlog, fig.width=6, fig.height=4.5}
-mdsData <- data.frame(cmdscale(sampleDistMatrix))
-mds <- cbind(mdsData, as.data.frame(colData(rld)))
-ggplot(mds, aes(X1,X2,color=dex,shape=cell)) + geom_point(size=3)
+# TODO how is this calculated and make prettier
+
+edgeR:
+
+```{r}
+y <- calcNormFactors(y)
+plotMDS(y)
 ```
 
-**MDS plot using rlog-transformed values.**
+We compute the MDS for the distances calculated from the VST
+counts and plot these in a Figure below.
+
+```{r mdsrlog, fig.width=6, fig.height=4.5}
+sampleDists <- dist(t(assay(vsd)))
+sampleDistMatrix <- as.matrix( sampleDists )
+mdsData <- data.frame(cmdscale(sampleDistMatrix))
+mds <- cbind(mdsData, as.data.frame(colData(vsd)))
+ggplot(mds, aes(X1,X2,color=dex,shape=cell)) + geom_point(size=3)
+```
 
 In a Figure below we show the same plot for the *PoissonDistance*:
 
 ```{r mdspois, fig.width=6, fig.height=4.5}
+library("PoiClaClu")
+poisd <- PoissonDistance(t(counts(dds)))
+samplePoisDistMatrix <- as.matrix( poisd$dd )
 mdsPoisData <- data.frame(cmdscale(samplePoisDistMatrix))
 mdsPois <- cbind(mdsPoisData, as.data.frame(colData(dds)))
 ggplot(mdsPois, aes(X1,X2,color=dex,shape=cell)) + geom_point(size=3)
 ```
-
-**MDS plot using the *Poisson Distance*.**
 
 # Differential expression analysis
 
@@ -1036,7 +953,7 @@ As we have already specified an experimental design when we created
 the *DESeqDataSet*, we can run the differential expression pipeline on
 the raw counts with a single call to the function *DESeq*:
 
-```{r airwayDE}
+```{r DESeq2call}
 dds <- DESeq(dds)
 ```
 
@@ -1050,6 +967,9 @@ dispersion values for each gene, and fitting a generalized linear model.
 A *DESeqDataSet* is returned that contains all the fitted
 parameters within it, and the following section describes how to
 extract out results tables of interest from this object.
+
+We will show in a following section how to perform
+differential testing using edgeR.
 
 ## Building the results table
 
@@ -1152,14 +1072,15 @@ see the outlier detection section of the *DESeq2* vignette.
 
 ## Performing differential expression testing with edgeR
 
-```{r}
+```{r edgeRcall}
 design <- model.matrix(~ cell + dex, colData(se))
 y <- calcNormFactors(y)
 y <- estimateDisp(y, design)
 fit <- glmFit(y, design)
 lrt <- glmLRT(fit, coef=ncol(design))
-tt <- topTags(lrt)
-tt
+tt <- topTags(lrt, n=nrow(y), p.value=0.1)
+tt10 <- topTags(lrt) # just the top 10 by default
+tt10
 ```
 
 We can compare to see how the results between the two software
@@ -1170,12 +1091,20 @@ tt.all <- topTags(lrt, n=nrow(y), sort.by="none")
 table(DESeq2=res$padj < 0.1, edgeR=tt.all$table$FDR < 0.1)
 ```
 
+# TODO write more
+
 Ranks:
 
 ```{r}
 common <- !is.na(res$padj)
-plot(rank(res$padj[common]), rank(tt.all$table$FDR[common]), cex=.1)
+plot(rank(res$padj[common]), 
+     rank(tt.all$table$FDR[common]), cex=.1,
+     xlab="DESeq2", ylab="edgeR")
 ```
+
+# TODO: edgeR with LFC threshold
+
+## Citing scientific research software
 
 If you use the results from an R analysis package in published
 research, you can find the proper citation for the software by typing
@@ -1199,22 +1128,29 @@ sum(res$pvalue < 0.05, na.rm=TRUE)
 sum(!is.na(res$pvalue))
 ```
 
-# TODO turn this into a code chunk
-
 Now, assume for a moment that the null hypothesis is true for all
 genes, i.e., no gene is affected by the treatment with
-dexamethasone. Then, by the definition of the *p* value, we expect up to
+dexamethasone. Suppose we are interesting in a significance level of 0.05.
+Then, by the definition of the *p* value, we expect up to
 5% of the genes to have a *p* value below 0.05. This amounts to
-`r round(sum(!is.na(res$pvalue)) * .05 )` genes.
+
+```{r}
+round(sum(!is.na(res$pvalue)) * .05)
+```
+
 If we just considered the list of genes with a *p* value below 0.05 as
 differentially expressed, this list should therefore be expected to
-contain up to
-`r round(sum(!is.na(res$pvalue)) * .05)` /
-`r sum(res$pvalue < .05, na.rm=TRUE)` =
-`r round(sum(!is.na(res$pvalue))*.05 / sum(res$pvalue < .05, na.rm=TRUE) * 100)`%
- false positives.
+contain many false positives:
 
-*DESeq2* uses the Benjamini-Hochberg (BH) adjustment [@Benjamini1995Controlling] as implemented in
+```{r}
+round(sum(!is.na(res$pvalue)) * .05) # expected 'null' less than 0.05
+sum(res$pvalue < .05, na.rm=TRUE) # observed p < .05
+# expected ratio of false positives in the set with p < .05
+round(sum(!is.na(res$pvalue))*.05 / sum(res$pvalue < .05, na.rm=TRUE), 2)
+```
+
+*DESeq2* and *edgeR* use the Benjamini-Hochberg (BH) 
+adjustment [@Benjamini1995Controlling] as implemented in
 the base R *p.adjust* function; in brief, this method calculates for
 each gene an adjusted *p* value that answers the following question:
 if one called significant all genes with an adjusted *p* value less than or
@@ -1237,21 +1173,6 @@ as significant. How many such genes are there?
 sum(res$padj < 0.1, na.rm=TRUE)
 ```
 
-We subset the results table to these genes and then sort it by the
-log2 fold change estimate to get the significant genes with the
-strongest down-regulation:
-
-```{r}
-resSig <- subset(res, padj < 0.1)
-head(resSig[ order(resSig$log2FoldChange), ])
-```
-
-...and with the strongest up-regulation:
-
-```{r}
-head(resSig[ order(resSig$log2FoldChange, decreasing=TRUE), ])
-```
-
 # Plotting results
 
 A quick way to visualize the counts for a particular gene is to use
@@ -1261,42 +1182,8 @@ counts (Figure below).
 
 ```{r plotcounts}
 topGene <- rownames(res)[which.min(res$padj)]
-plotCounts(dds, gene=topGene, intgroup=c("dex"))
+plotCounts(dds, topGene, "dex")
 ```
-
-# TODO kill all this extra
-
-**Normalized counts for a single gene over treatment group.**
-
-We can also make custom plots using the *ggplot* function from the
-`r CRANpkg("ggplot2")` package (Figures below).
-
-```{r ggplotcountsjitter, fig.width=6, fig.height=4.5}
-data <- plotCounts(dds, gene=topGene, intgroup=c("dex","cell"), returnData=TRUE)
-ggplot(data, aes(x=dex, y=count, color=cell)) +
-  scale_y_log10() + 
-  geom_point(position=position_jitter(width=.1,height=0), size=3)
-```
-
-**Normalized counts indicating cell line with color.**
-
-```{r ggplotcountsdot, fig.width=6, fig.height=4.5}
-ggplot(data, aes(x=dex, y=count, fill=dex)) +
-  scale_y_log10() + 
-  geom_dotplot(binaxis="y", stackdir="center")
-```
-
-**Normalized counts using a more structural arrangement.**
-Here the color indicates treatment.
-
-```{r ggplotcountsgroup, fig.width=6, fig.height=4.5}
-ggplot(data, aes(x=dex, y=count, color=cell, group=cell)) +
-  scale_y_log10() + geom_point(size=3) + geom_line()
-```
-
-**Normalized counts with lines connecting cell lines.**
-Note that the *DESeq* test actually takes into account the cell line
-effect, so this figure more closely depicts the difference being tested.
 
 ## MA plot with DESeq2
 
@@ -1307,7 +1194,6 @@ two-group comparison (Figure below).
 DESeq2::plotMA(res, ylim=c(-5,5))
 ```
 
-**An MA-plot of changes induced by treatment.**
 The log2 fold change for a particular
 comparison is plotted on the y-axis and the average of the counts
 normalized by size factor is shown on the x-axis ("M" for minus,
@@ -1327,8 +1213,19 @@ a significant call.
 ## MA / Smear plot with edgeR
 
 ```{r}
-plotSmear(lrt)
+plotSmear(lrt, de.tags=tt$table$gene.id)
 ```
+
+## Heatmap of the most significant genes
+
+```{r}
+library("pheatmap")
+mat <- assay(vsd)[ head(order(res$padj),30), ]
+mat <- mat - rowMeans(mat)
+df <- as.data.frame(colData(vsd)[,c("cell","dex")])
+pheatmap(mat, annotation_col=df)
+```
+
 
 # Annotating and exporting results
 
@@ -1365,11 +1262,13 @@ res$symbol <- mapIds(Homo.sapiens,
                      column="SYMBOL",
                      keytype="ENSEMBL",
                      multiVals="first")
+y$genes$symbol <- res$symbol
 res$entrez <- mapIds(Homo.sapiens,
                      keys=row.names(res),
                      column="ENTREZID",
                      keytype="ENSEMBL",
                      multiVals="first")
+y$genes$entrez <- res$entrez
 ```
 
 Now the results have the desired external gene IDs:
@@ -1395,14 +1294,47 @@ write.csv(resOrderedDF, file="results.csv")
 
 ## Exporting results to Glimma
 
-```{r}
+`r Biocpkg("Glimma")` is a new package in Bioconductor which allows one to 
+build interactive HTML pages that summarize the results of an
+edgeR, limma or DESeq2 analysis. See the *Glimma* vignette
+for more details on how to customize this HTML page and what
+other plots are available.
+
+Note that the Glimma functions take a minute to build.
+
+# TODO write more...
+
+edgeR results:
+
+```{r eval=FALSE}
 library("Glimma")
 glMDPlot(lrt, 
          counts=y$counts, 
          anno=y$genes, 
          groups=y$samples$dex, 
-         samples=colnames(y), 
-         id.column="gene.id")
+         samples=colnames(y),
+         status=tt.all$table$FDR < 0.1,
+         id.column="gene.id",
+         display.columns=c("symbol", "entrez"))
+```
+
+DESeq2 results:
+
+```{r eval=FALSE}
+res.df <- as.data.frame(res)
+res.df$log10MeanNormCount <- log10(res.df$baseMean)
+idx <- rowSums(counts(dds)) > 0
+res.df <- res.df[idx,]
+res.df$padj[is.na(res.df$padj)] <- 1
+glMDPlot(res.df,
+         xval="log10MeanNormCount",
+         yval="log2FoldChange",
+         counts=counts(dds)[idx,],
+         anno=data.frame(GeneID=rownames(dds)[idx]),
+         groups=dds$dex,
+         samples=colnames(dds),
+         status=res.df$padj < 0.1,
+         display.columns=c("symbol", "entrez"))
 ```
 
 ## Session information
