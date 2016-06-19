@@ -95,26 +95,28 @@ RNA-seq experiment into R/Bioconductor for visualization
 and statistical testing. We want to visualize the relationships
 between the samples (within and across the treatment),
 and then we want to perform statistical tests to find which
-genes are changing in their expression after treatment.
+genes are changing their expression after treatment.
 
 An overview of the steps we will take (and alternatives) is:
 
-1. Preproccesing of FASTQ files
-    + Alignment with STAR or other software
-    + Quantification at transcript level using Sailfish, Salmon or kallisto
-2. Summarization into a gene-level count matrix
-    + Count number of fragments that can be unambiguously assigned to genes
+1. Preprocess FASTQ files
+    + Align to the genome with STAR or other software.
+    + Quantify at transcript level using Sailfish, Salmon or kallisto 
+      (not covered in this workflow).
+2. Summarize into a gene-level count matrix
+    + Count number of aligned fragments that can be unambiguously assigned to 
+      genes.
     + Use the `r Biocpkg("tximport")` package to import transcript quantifications
-      and summarize to the gene level.
+      and summarize to the gene level (not covered in this workflow).
 3. Convert the count matrix into a package-specific object, 
-   e.g. a *DESeqDataSet* for DESeq2 or a *DGEList* for edgeR
-4. Make exploratory plots, such as PCA plots and sample-sample distance plots
-5. Perform differential expression testing for all genes
-6. Make summary plots of the differential expression results
+   e.g. a *DESeqDataSet* for DESeq2 or a *DGEList* for edgeR.
+4. Make exploratory plots, such as PCA plots and sample-sample distance plots.
+5. Perform differential expression testing for all genes.
+6. Make summary plots of the differential expression results.
 
 # Summarizing an RNA-seq experiment as a count matrix
 
-As input, the count-based statistical methods, such as
+The count-based statistical methods, such as
 `r Biocpkg("DESeq2")` [@Love2014Moderated],
 `r Biocpkg("edgeR")` [@Robinson2009EdgeR],
 `r Biocpkg("limma")` with the voom method [@Law2014Voom],
@@ -122,7 +124,7 @@ As input, the count-based statistical methods, such as
 `r Biocpkg("EBSeq")` [@Leng2013EBSeq] and
 `r Biocpkg("BaySeq")` [@Hardcastle2010BaySeq],
 expect input data as obtained, e.g., from RNA-seq or another high-throughput
-sequencing experiment, in the form of a matrix of integer values.
+sequencing experiment, in the form of a matrix of integer values, or "counts".
 The value in the *i*-th row and the *j*-th column of the matrix tells how
 many reads (or fragments, for paired-end RNA-seq) have been
 unambiguously assigned to gene *i* in sample *j*.  Analogously,
@@ -151,7 +153,7 @@ The computational analysis of an RNA-seq experiment often begins earlier:
 we first obtain a set of FASTQ files that
 contain the nucleotide sequence of each read and a quality score at
 each position. These reads must first be aligned to a reference
-genome or transcriptome.It is important to know if the sequencing
+genome or transcriptome. It is important to know if the sequencing
 experiment was single-end or paired-end, as the alignment software
 will require the user to specify both FASTQ files for a paired-end
 experiment. The output of this alignment step is commonly stored in a
@@ -198,14 +200,14 @@ generate count matrices, as described in the following section.
 ## Locating BAM files and the sample table
 
 Besides the count matrix that we will use later, the
-`r Biocexptpkg("airway")` package also contains eight files 
+`r Biocexptpkg("airway")` package also contains eight BAM files 
 with a small subset of reads from the experiment --
 enough for us to try out counting reads for a small set of genes.
 
 The reads were selected which aligned to a small region of
 chromosome 1. We chose a subset of reads because the full alignment files are
-large (a few gigabytes each), and because it takes between 10-30
-minutes to count the fragments for each sample.
+large (a few gigabytes each), and because it takes 10-30
+minutes to count the full set of fragments for each sample.
 We will use these files to demonstrate how a count matrix can be constructed
 from BAM files. Afterwards, we will load the full count matrix
 corresponding to all samples and all data, which is already provided
@@ -259,7 +261,7 @@ features, e.g. a GFF3 or GTF file specifying the gene models.
 
 ## *tximport*: transcript abundance summarized to gene-level
 
-An exception to the alignment-counting workflow is the *tximport* workflow, 
+An alternative to the alignment-counting workflow is the *tximport* workflow, 
 which leverages transcript quantification methods such as 
 *Sailfish* [@Patro2014Sailfish],
 *Salmon* [@Patro2015Salmon],
@@ -285,7 +287,7 @@ and the `r Biocpkg("tximport")` package vignette.
 
 ## Preparing count matrices from BAM files
 
-The following tools can be used generate count matrices from
+The following tools can be used to generate count matrices from
 reads aligned to the genome:
 
 * *summarizeOverlaps* from `r Biocpkg("GenomicAlignments")` [@Lawrence2013Software]
@@ -456,7 +458,7 @@ visually check the read alignments using a genome visualization tool.
 ## SummarizedExperiment
 
 We will now explain all the parts of the object we obtained 
-from *summarizeOverlaps*
+from *summarizeOverlaps*.
 The following chunk of code can be run to produce a simple diagram of 
 a *SummarizedExperiment* object.
 
@@ -507,7 +509,9 @@ nrow(se)
 ncol(se)
 ```
 
-It is also possible to store multiple matrices, accessed with `assays`.
+As we see, in this experiment there are 20 genes and 8 samples. 
+It is also possible to store multiple matrices in a *SummarizedExperiment* 
+object, and to access them with `assays`.
 
 The `rowRanges` for our object is the *GRangesList* we used for
 counting (one *GRanges* of exons for each row of the count matrix).
@@ -555,7 +559,7 @@ colData(se)
 
 We are now finished exploring the parts of the *SummarizedExperiment*.
 
-## Counting with featureCounts in Rsubread
+## Alternative - Counting with featureCounts in Rsubread
 
 Another option for counting reads or fragments within R/Bioconductor
 is the `r Biocpkg("Rsubread")` package which contains the *featureCounts*
@@ -583,7 +587,7 @@ head(fc$counts)
 At this point, we have counted the fragments which overlap the genes
 in the gene model we specified. This is a branching point where we
 could use a variety of Bioconductor packages for exploration and
-differential expression of the count data, including
+differential expression of the count matrix, including
 `r Biocpkg("edgeR")` [@Robinson2009EdgeR],
 `r Biocpkg("limma")` with the voom method [@Law2014Voom],
 `r Biocpkg("DSS")` [@Wu2013New],
@@ -814,9 +818,10 @@ ddsMat <- DESeqDataSetFromMatrix(countData = countdata,
 
 ## Creating a DGEList for use with edgeR
 
-It is just as easy to create a *DGEList* object using the 
-count matrix and information about samples. We can additionally
-add information about the genes:
+As mentioned above, the edgeR package uses another type of data container,
+namely a DGEList object. It is just as easy to create a *DGEList* object using
+the count matrix and information about samples. We can additionally add
+information about the genes:
 
 ```{r message=FALSE}
 library("edgeR")
@@ -843,9 +848,11 @@ There are two separate paths in this workflow:
 2. *statistical testing* for differences attributable to 
    treatment, controlling for cell line effects
 
-This is critical because
-the statistical testing methods rely on original count data
-(not scaled or transformed) for calculating the precision of measurements. 
+Importantly, the statistical testing methods rely on original count data (not
+scaled or transformed) for calculating the precision of measurements. However,
+for visualization and exploratory analysis, transformed counts are typically
+more suitable. Thus, it is critical to separate the two workflows and use the 
+appropriate input data for each of them.
 
 ## Transformations
 
@@ -904,27 +911,39 @@ Here we specify cell line (plotting symbol) and dexamethasone treatment (color).
 From the PCA plot, we see that the differences between cells (the
 different plotting shapes) are considerable, though not stronger than the differences due to
 treatment with dexamethasone (red vs blue color). This shows why it will be important to
-account for this in differential testing by using a paired design
+account for the cell line effect in differential testing by using a paired design
 ("paired", because each dex treated sample is paired with one
 untreated sample from the *same* cell line). We are already set up for
 this design by assigning the formula `~ cell + dex` earlier.
 
 ## MDS plot
 
-Another plot, very similar to the PCA plot, is a 
-*multidimensional scaling* (MDS) plot. 
+Another way to reduce dimensionality, which is in many ways similar to PCA, is 
+*multidimensional scaling* (MDS). For MDS, we first have to calculate all
+pairwise distances between our objects (samples in this case), and then create a
+(typically) two-dimensional representation where these pre-calculated distances
+are represented as accurately as possible. This means that depending on how the
+pairwise sample distances are defined, the two-dimensional plot can be very
+different, and it is important to choose a distance that is suitable for the
+type of data at hand.
 
-# TODO how is this calculated and make prettier
-
-edgeR:
+edgeR contains a function `plotMDS`, which operates on a `DGEList` object and
+generates a two-dimensional MDS representation of the samples. The default 
+distance between two samples can be interpreted as the "typical" log fold change
+between the two samples, for the genes that are most different between them (by 
+default, the top 500 genes, but this can be modified as shown below). We
+generate an MDS plot from the `DGEList` object `y`, coloring by the treatment
+and using different plot symbols for different cell lines.
 
 ```{r}
 y <- calcNormFactors(y)
-plotMDS(y)
+plotMDS(y, top = 1000, labels = NULL, col = as.numeric(y$samples$dex), 
+        pch = as.numeric(y$samples$cell), cex = 2)
 ```
 
-We compute the MDS for the distances calculated from the VST
-counts and plot these in a Figure below.
+We can also perform MDS on manually calculated distances, using the R function
+`cmdscale`. Below we show how to do this starting from the VST counts, using
+Euclidean distance.
 
 ```{r mdsrlog, fig.width=6, fig.height=4.5}
 sampleDists <- dist(t(assay(vsd)))
@@ -1072,10 +1091,36 @@ see the outlier detection section of the *DESeq2* vignette.
 
 ## Performing differential expression testing with edgeR
 
-```{r edgeRcall}
-design <- model.matrix(~ cell + dex, colData(se))
+Next we will show how to perform differential expression analysis with *edgeR*.
+Recall that we have a `DGEList` `y`, containing three objects:
+
+```{r}
+names(y)
+```
+
+We first define a design matrix, using the same formula syntax as for *DESeq2*
+above.
+
+```{r}
+design <- model.matrix(~ cell + dex, y$samples)
+```
+
+Then, we calculate normalization factors and estimate the dispersion for each
+gene. Note that we need to specify the design in the dispersion calculation.
+
+```{r}
 y <- calcNormFactors(y)
 y <- estimateDisp(y, design)
+```
+
+Finally, we fit the generalized linear model and perform the test. In the
+`glmLRT` function, we indicate which coefficient (which column in the design
+matrix) that we would like to test for. It is possible to test more general 
+contrasts as well, and the user guide contains many examples on how to do this.
+The `topTags` function extracts the top-ranked genes. You can indicate the
+adjusted p-value cutoff, and/or the number of genes to keep.
+
+```{r edgeRcall}
 fit <- glmFit(y, design)
 lrt <- glmLRT(fit, coef=ncol(design))
 tt <- topTags(lrt, n=nrow(y), p.value=0.1)
@@ -1212,6 +1257,8 @@ a significant call.
 
 ## MA / Smear plot with edgeR
 
+In *edgeR*, the MA plot is obtained via the `plotSmear` function. 
+
 ```{r}
 plotSmear(lrt, de.tags=tt$table$gene.id)
 ```
@@ -1231,7 +1278,7 @@ pheatmap(mat, annotation_col=df)
 
 Our result table so far only contains information about Ensembl gene
 IDs, but alternative gene names may be more informative for
-collaborators.  Bioconductor's annotation packages help with mapping
+interpretation.  Bioconductor's annotation packages help with mapping
 various ID schemes to each other.
 We load the `r Biocpkg("AnnotationDbi")` package and the annotation package
 `r Biocannopkg("Homo.sapiens")`:
@@ -1314,8 +1361,7 @@ glMDPlot(lrt,
          groups=y$samples$dex, 
          samples=colnames(y),
          status=tt.all$table$FDR < 0.1,
-         id.column="gene.id",
-         display.columns=c("symbol", "entrez"))
+         id.column="gene.id")
 ```
 
 DESeq2 results:
