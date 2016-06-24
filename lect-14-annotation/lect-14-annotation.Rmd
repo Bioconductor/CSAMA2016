@@ -1,0 +1,11 @@
+---
+title: "Annotation -- genes, genomic features, and variants"
+author: "Martin Morgan, Vincent Carey"
+date: "Thursday July 14"
+vignette: >
+  %\VignetteIndexEntry{Annotation -- genes, genomic features, and variants}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---

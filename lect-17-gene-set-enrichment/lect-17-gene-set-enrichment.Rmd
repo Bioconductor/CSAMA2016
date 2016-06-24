@@ -1,0 +1,11 @@
+---
+title: "Gene Set Enrichment Analysis"
+author: "Martin Morgan, Michael Love"
+date: "Friday July 15"
+vignette: >
+  %\VignetteIndexEntry{Gene Set Enrichment Analysis}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---

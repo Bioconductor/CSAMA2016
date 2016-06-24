@@ -1,0 +1,11 @@
+---
+title: "Computing with Sequences and Ranges"
+author: "Martin Morgan"
+date: "Tuesday July 12"
+vignette: >
+  %\VignetteIndexEntry{Computing with Sequences and Ranges}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---

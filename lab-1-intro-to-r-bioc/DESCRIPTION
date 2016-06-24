@@ -1,0 +1,31 @@
+Package: Lab1
+Version: 0.0.1
+Title: Lab 1: Introduction to R / Bioconductor.
+Description: This package contains lab vignettes, data,
+    and short functions for use in CSAMA 2016 Lab 1.
+Authors@R:
+    person("Martin", "Morgan", email="mtmorgan@fredhutch.org", role="aut")
+Suggests:
+    AnnotationHub,
+    BSgenome.Hsapiens.UCSC.hg19,
+    BiocParallel,
+    Biostrings,
+    GenomicAlignments,
+    GenomicFeatures,
+    GenomicFiles,
+    GenomicRanges,
+    Gviz,
+    IRanges,
+    RNAseqData.HNRNPC.bam.chr14,
+    RNAseqData.HNRNPC.bam.chr14,
+    Rsamtools,
+    TxDb.Hsapiens.UCSC.hg19.knownGene,
+    VariantAnnotation,
+    biomaRt,
+    ggplot2,
+    org.Hs.eg.db,
+    rtracklayer
+VignetteBuilder: knitr
+License: Artistic-2.0
+URL: https://bioconductor.org/help/course-materials
+RoxygenNote: 5.0.1

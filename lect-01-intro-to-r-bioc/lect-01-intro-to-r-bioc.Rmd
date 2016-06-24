@@ -1,0 +1,11 @@
+---
+title: "Introduction to R and Bioconductor"
+author: "Martin Morgan"
+date: "Monday July 11"
+vignette: >
+  %\VignetteIndexEntry{Introduction to R and Bioconductor}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---
