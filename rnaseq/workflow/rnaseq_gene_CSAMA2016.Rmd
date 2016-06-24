@@ -1389,7 +1389,7 @@ processed by *write.csv*. Here, we take just the top 100 genes for
 demonstration.
 
 ```{r eval=FALSE}
-resOrderedDF <- as.data.frame(resOrdered)[1:100,]
+resOrderedDF <- as.data.frame(resOrdered)[seq_len(100),]
 write.csv(resOrderedDF, file="results.csv")
 ```
 
