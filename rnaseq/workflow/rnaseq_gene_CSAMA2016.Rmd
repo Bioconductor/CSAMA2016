@@ -1399,6 +1399,79 @@ glMDPlot(res.df,
          display.columns=c("symbol", "entrez"))
 ```
 
+# Gene set overlap analysis
+
+Now that we have obtained a list of genes that are significantly up- 
+or down-regulated in response to treatment, a natural question is:
+What do these genes have in common? A simple way to answer this is
+to compare with a gene set collection, i.e., a collection of sets 
+of genes, which have something specific in common. For each such set,
+we ask? Are the genes in this set significantly enriched in our list
+of down-regulated genes, i.e., do they appear more often in this list 
+as one would expect by chance? As explained in the lecture, the 
+hypergeometric test (also called Fisher's test) is often used for this 
+purpose. 
+
+The Gene Ontology (GO) is a controlled vocabular of terms used to describe what it 
+known about genes' function with respect to three aspects, namely
+their molecular function (MF), the biological process (BP) they play a role
+in, and the cellular component (CC) the gene's product is part of. The
+annotation package `r Biocannopkg("org.Hs.eg.db")` (part of the package
+`r Biocannopkg("Homo.sapiens")`, which we have already 
+used above), contains mappings of human genes to GO terms. The 
+`r Biocpkg("topGO")` package [@Alexa2006Improved] offers a simple way to perform 
+enrichment tests for all the GO terms, which we demonstrate now.
+
+First, we should subset our result table to only those genes that had suffient read
+coverage that we could actually test for differential expression. In DESeq2, we
+can simply take the genes that survived independent filtering (see above) and hence
+got assigned an adjusted p value.
+
+```{r}
+resTested <- res[ !is.na(res$padj), ]
+```
+
+Then, we construct a factor containing ones and zeroes to indicate which of these genes
+were significantly up-regulated and which not. We name the vector elements with
+the Ensembl gene IDs.
+
+```{r}
+genelistUp <- factor( as.integer( resTested$padj < .1 & resTested$log2FoldChange < 0 ) )
+names(genelistUp) <- rownames(resTested)
+```
+
+Now, we load the topGO package and prepare a data structure for testing. 
+
+```{r}
+library( topGO message=FALSE )
+
+myGOdata <- new( "topGOdata",
+   ontology = "BP",
+   allGenes = genelistUp,
+   nodeSize = 10,
+   annot = annFUN.org, mapping = "org.Hs.eg.db", ID="ensembl" )
+```
+
+Here, we have indicated that we want to work within the Biological Processes (BP) 
+sub-ontology, use only sets with at least 10 genes, and that the names of our
+gene list are Ensembl IDs, which are mapped to GO terms in the `org.Hs.eg.db`
+annotation database object.
+
+We run Fisher tests and choose topGO's "elim" algorithm, which eliminates broader terms
+(like, e.g., "mitochondrion") if a more narrow term (e.g., "mitochandrial membrane") 
+can be found to describe the enrichment:
+
+```{r}
+goTestResults <- runTest( myGOdata, algorithm = "elim", statistic = "fisher" )
+
+GenTable( myGOdata, goTestResults )
+```
+
+Inspect the table. Which results make sense, which don't? Try again for the other two
+sub-ontologies, and for the down-regulated genes. Remember that gene set enrichments always
+have to be taken with a grain of salt, but can be a good starting point for further
+downstream analysis of a gene list.
+
 
 # Session information
 
