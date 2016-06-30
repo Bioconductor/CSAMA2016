@@ -1436,14 +1436,14 @@ were significantly up-regulated and which not. We name the vector elements with
 the Ensembl gene IDs.
 
 ```{r}
-genelistUp <- factor( as.integer( resTested$padj < .1 & resTested$log2FoldChange < 0 ) )
+genelistUp <- factor( as.integer( resTested$padj < .1 & resTested$log2FoldChange > 0 ) )
 names(genelistUp) <- rownames(resTested)
 ```
 
 Now, we load the topGO package and prepare a data structure for testing. 
 
-```{r}
-library( topGO message=FALSE )
+```{r message=FALSE}
+library( topGO )
 
 myGOdata <- new( "topGOdata",
    ontology = "BP",
