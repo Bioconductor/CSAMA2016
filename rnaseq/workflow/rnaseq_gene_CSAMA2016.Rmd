@@ -11,7 +11,7 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
 ---
 
-<!-- to compile this: library("rmarkdown"); render("rnaseqGene.Rmd") -->
+<!-- to compile this: library("rmarkdown"); render("rnaseq_gene_CSAMA2016.Rmd") -->
 
 <!--
      # a list of all required libraries:
@@ -71,7 +71,7 @@ The packages used in this workflow are loaded with the
 [Bioconductor package installation instructions](http://bioconductor.org/install/#install-bioconductor-packages).
 
 A published version of this workflow, including reviewer reports and comments
-is available at [F1000Research](http://f1000research.com/articles/4-1070).
+is available at [F1000Research](http://f1000research.com/articles/4-1070) [@Love2015RNASeq],.
 
 If you have questions about this workflow or any Bioconductor
 software, please post these to the
@@ -90,11 +90,11 @@ wherein airway smooth muscle cells were treated with dexamethasone, a
 synthetic glucocorticoid steroid with anti-inflammatory effects
 [@Himes2014RNASeq].  Glucocorticoids are used, for example, 
 by people with asthma to reduce inflammation of the airways. In the experiment,
-four primary human airway smooth muscle cell lines were treated with 1
+four human airway smooth muscle cell lines were treated with 1
 micromolar dexamethasone for 18 hours. For each of the four cell
 lines, we have a treated and an untreated sample. For more description
-of the experiment see the
-[PubMed entry 24926665](http://www.ncbi.nlm.nih.gov/pubmed/24926665)
+of the experiment see the article,
+[PubMed entry 24926665](http://www.ncbi.nlm.nih.gov/pubmed/24926665),
 and for raw data see the
 [GEO entry GSE52778](http://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE52778).
 
@@ -105,18 +105,18 @@ RNA-seq experiment into R/Bioconductor for visualization
 and statistical testing. We want to visualize the relationships
 between the samples (within and across the treatment),
 and then we want to perform statistical tests to find which
-genes are changing their expression after treatment.
+genes are changing their expression due to treatment.
 
 An overview of the steps we will take (and alternatives) is:
 
 1. Preprocess FASTQ files
-    + Align to the genome with STAR or other software.
-    + Quantify at transcript level using Sailfish, Salmon or kallisto 
+    + Align to the genome with STAR or other alignment tools.
+    + *or:* Quantify at transcript level using Sailfish, Salmon or kallisto 
       (not covered in this workflow).
 2. Summarize into a gene-level count matrix
     + Count number of aligned fragments that can be unambiguously assigned to 
       genes.
-    + Use the `r Biocpkg("tximport")` package to import transcript quantifications
+    + *or:* Use the `r Biocpkg("tximport")` package to import transcript quantifications
       and summarize to the gene level (not covered in this workflow).
 3. Convert the count matrix into a package-specific object, 
    e.g. a *DESeqDataSet* for DESeq2 or a *DGEList* for edgeR.
@@ -232,8 +232,9 @@ library("airway")
 
 The R function *system.file* can be used to find out where on your
 computer the files from a package have been installed. Here we ask for
-the full path to the `extdata` directory, where R packages store
-external data, that is part of the `r Biocexptpkg("airway")` package.
+the full path to the `extdata` directory, where the 
+external data that is part of the `r Biocexptpkg("airway")` package 
+has been stored.
 
 Note that the use of *system.file* is particular to this workflow,
 because we have the data stored in an R package. You would not 
@@ -336,8 +337,8 @@ in the annotation you use are consistent with the chromosome names of
 the reference used for read alignment. Otherwise, the scripts might
 fail to count any reads to features due to the mismatching names.
 For example, a common mistake is when the alignment files contain
-chromosome names in the style of `1` and the gene annotation in the
-style of `chr1`, or the other way around. See the *seqlevelsStyle*
+chromosome names in the style of "`1`" and the gene annotation in the
+style of "`chr1`", or the other way around. See the *seqlevelsStyle*
 function in the `r Biocpkg("GenomeInfoDb")` package for solutions.
 We can check the chromosome names (here called "seqnames")
 in the alignment files like so:
@@ -391,6 +392,10 @@ ebg <- exonsBy(txdb, by="gene")
 ebg
 ```
 
+Note that the output here just shows the exons of the first gene. The `ebg`
+object contains 19 more genes, ie., for all the 20 genes descibed
+in our (very short) example GTF file.
+
 ## Counting with summarizeOverlaps
 
 After these preparations, the actual counting is easy. The function
@@ -411,11 +416,12 @@ library("GenomicAlignments")
 library("BiocParallel")
 ```
 
-Here we specify to use one core, not multiple cores. We could have
-also skipped this line and the counting step would run in serial.
+Most modern laptops have CPUs have with two or four cores, hence we gain a bit of speed
+by asking to use two cores. We could have also skipped this line and the counting 
+step would run in serial.
 
 ```{r}
-register(SerialParam())
+register(MulticoreParam(2))
 ```
 
 The following call creates the *SummarizedExperiment* object with counts:
@@ -475,7 +481,7 @@ a *SummarizedExperiment* object.
 ```{r sumexp, echo = FALSE}
 par(mar=c(0,0,0,0))
 plot(1,1,xlim=c(0,100),ylim=c(0,100),bty="n",
-     type="n",xlab="",ylab="",xaxt="n",yaxt="n")
+   type="n",xlab="",ylab="",xaxt="n",yaxt="n")
 polygon(c(45,90,90,45),c(5,5,70,70),col="pink",border=NA)
 polygon(c(45,90,90,45),c(68,68,70,70),col="pink3",border=NA)
 text(67.5,40,"assay")
@@ -483,9 +489,10 @@ text(67.5,35,'e.g. "counts"')
 polygon(c(10,40,40,10),c(5,5,70,70),col="skyblue",border=NA)
 polygon(c(10,40,40,10),c(68,68,70,70),col="skyblue3",border=NA)
 text(25,40,"rowRanges")
+text(25,35,'(with "mcols")')
 polygon(c(45,90,90,45),c(75,75,95,95),col="palegreen",border=NA)
 polygon(c(45,47,47,45),c(75,75,95,95),col="palegreen3",border=NA)
-text(67.5,85,"colData")
+text(67.5,85,"colData",srt=90)
 ```
 
 The `assay` (pink block) contains the matrix of counts, 
@@ -1277,8 +1284,8 @@ pheatmap(mat, annotation_col=df)
 
 # Annotating and exporting results
 
-Our result table so far only contains information about Ensembl gene
-IDs, but alternative gene names may be more informative for
+Our result table so far only contains Ensembl gene
+IDs, but actual gene names may be more informative for
 interpretation.  Bioconductor's annotation packages help with mapping
 various ID schemes to each other.
 We load the `r Biocpkg("AnnotationDbi")` package and the annotation package
@@ -1311,12 +1318,20 @@ res$symbol <- mapIds(Homo.sapiens,
                      keytype="ENSEMBL",
                      multiVals="first")
 y$genes$symbol <- res$symbol
+
 res$entrez <- mapIds(Homo.sapiens,
                      keys=row.names(res),
                      column="ENTREZID",
                      keytype="ENSEMBL",
                      multiVals="first")
 y$genes$entrez <- res$entrez
+
+res$symbol <- mapIds(Homo.sapiens,
+                     keys=row.names(res),
+                     column="GENENAME",
+                     keytype="ENSEMBL",
+                     multiVals="first")
+y$genes$symbol <- res$symbol
 ```
 
 Now the results have the desired external gene IDs:
@@ -1350,7 +1365,7 @@ other plots are available.
 
 Note that the Glimma functions take a minute to build.
 
-# TODO write more...
+### TODO write more...
 
 edgeR results:
 
@@ -1384,7 +1399,8 @@ glMDPlot(res.df,
          display.columns=c("symbol", "entrez"))
 ```
 
-## Session information
+
+# Session information
 
 ```{r}
 sessionInfo()
