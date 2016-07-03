@@ -1145,13 +1145,25 @@ tt10 <- topTags(lrt) # just the top 10 by default
 tt10
 ```
 
-We can compare to see how the results between the two software
+We can compare to see how the results from the two software
 overlap:
 
 ```{r}
 tt.all <- topTags(lrt, n=nrow(y), sort.by="none")
 table(DESeq2=res$padj < 0.1, edgeR=tt.all$table$FDR < 0.1)
 ```
+
+Also with edgeR we can test for significance relative to a fold-change 
+threshold, using the function `glmTreat` instead of `glmLRT`. Below we set the
+log fold-change threshold to 1 (i.e., fold change threshold equal to 2), as for
+DESeq2 above. We also compare the results to those obtained with DESeq2.
+
+```{r}
+treatres <- glmTreat(fit, coef = ncol(design), lfc = 1)
+tt.treat <- topTags(treatres, n = nrow(y), sort.by = "none")
+table(DESeq2 = resLFC1$padj < 0.1, edgeR = tt.treat$table$FDR < 0.1)
+```
+
 
 # TODO write more
 
@@ -1164,7 +1176,6 @@ plot(rank(res$padj[common]),
      xlab="DESeq2", ylab="edgeR")
 ```
 
-# TODO: edgeR with LFC threshold
 
 ## Multiple testing
 
