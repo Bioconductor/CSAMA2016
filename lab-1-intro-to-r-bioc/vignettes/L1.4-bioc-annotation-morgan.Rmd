@@ -300,7 +300,7 @@ difference between this and the genomic coordinates covered by each
 exon
 
 ```{r introns}
-introns <- psetdiff(range(brca1cds), brca1cds)
+introns <- psetdiff(unlist(range(brca1cds)), brca1cds)
 ```
 
 Retrieve the intronic sequences with `getSeq()` (these are *not*
