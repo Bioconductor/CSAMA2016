@@ -90,15 +90,6 @@ queries is in following Table.
 | [GEOquery](http://www.ncbi.nlm.nih.gov/geo/)        | Array and other data                      |
 | [ArrayExpress](http://www.ebi.ac.uk/arrayexpress/)  | Array and other data                      |
 
-*Using biomaRt*
-
-The [biomaRt][] package offers access to the online
-[biomart](http://www.biomart.org) resource. this consists of several
-data base resources, referred to as 'marts'.  Each mart allows access
-to multiple data sets; the [biomaRt][] package provides methods for
-mart and data set discovery, and a standard method `getBM()` to
-retrieve data.
-
 ## Exercises
 
 **Exercise**: This exercise illustrates basic use of the `select'

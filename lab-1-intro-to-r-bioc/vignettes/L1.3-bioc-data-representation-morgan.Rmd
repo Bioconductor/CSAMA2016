@@ -75,7 +75,7 @@ getClass(class(ir))
 ```
 
 Notice that `IRanges` extends the `Ranges` class. Now try entering
-`?flank` (`?"flank,<tab>"` if not using _RStudio, where `<tab>` means
+`?flank` (`?"flank,<tab>"` if not using _RStudio_, where `<tab>` means
 to press the tab key to ask for tab completion). You can see that
 there are help pages for `flank` operating on several different
 classes. Select the completion
@@ -131,7 +131,8 @@ showMethods(class="GRanges", where=search())
 
 Use `help()` to list the help pages in the `GenomicRanges` package,
 and `vignettes()` to view and access available vignettes; these are
-also available in the Rstudio 'Help' tab.
+also available in the RStudio 'Help' tab.
+
 ```{r granges-man-and-vignettes, eval=FALSE}
 help(package="GenomicRanges")
 vignette(package="GenomicRanges")
