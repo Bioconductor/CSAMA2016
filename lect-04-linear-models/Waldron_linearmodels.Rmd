@@ -130,7 +130,7 @@ Assumptions of linear models: $\epsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsi
     * `L4`={1 if $4^{th}$ leg pair, 0 otherwise}.
 
 - R re-codes factors to dummy variables automatically. 
-- Dummy coding depends on whether factor is ordered or not.
+- Note that factors can be *ordered* or *unordered*
 
 # Model formulae
 
@@ -238,16 +238,16 @@ print(fit.table, type="html")
 
 ## Interaction (effect modification)
 
+![Interaction between coffee and time of day on performance](coffee_interaction.jpg)
+  
+Image credit: http://personal.stevens.edu/~ysakamot/
+
+## Interaction (effect modification)
+
 Interaction is modeled as the product of two covariates:
 $$
 E[y|x] = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_{12} x_1*x_2
 $$
-
-## Interaction (effect modification)
-
-![Interaction between coffee and time of day on performance](coffee_interaction.jpg)
-  
-Image credit: http://personal.stevens.edu/~ysakamot/
 
 ## Model formulae (cont'd)
 
@@ -290,10 +290,10 @@ Matrix notation for the multiple linear regression model:
 $$
 \,
 \begin{pmatrix}
-Y_1\\
-Y_2\\
+y_1\\
+y_2\\
 \vdots\\
-Y_N
+y_N
 \end{pmatrix} = 
 \begin{pmatrix}
 1&x_1\\
@@ -387,7 +387,7 @@ print(fit.table, type="html")
 
 ## Design matrix to contrast what we want
 
-The desired contrast is:
+What if we want to contrast...
 
 `typepush:legL3 - typepush:legL2`
 
@@ -461,7 +461,7 @@ text(x=Fcrit, y=0.3, label="Probability = 0.05", pos=4)
 ## Summary
 
 - Linear models are the basis for identifying differential expression / differential abundance
-    - anything with at least one continuous $X$ or $Y$
+    - continuous $Y$; any kind of $X$ variables
 - **Assumptions**: 
     1. normal, homoscedastic errors,
     2. a linear relationship, and
