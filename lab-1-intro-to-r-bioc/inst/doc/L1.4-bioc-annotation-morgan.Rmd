@@ -33,6 +33,18 @@ Presenting Author: Martin Morgan (<a
 Date: 11 July, 2016
 Back: [Monday labs](lab-1-intro-to-r-bioc.html)
 
+**Objective**: Learn about _Bioconductor_ resources for gene and
+  genome annotation.
+
+**Lessons learned**: 
+
+- Use `org.*` packages for mapping between gene symbols.
+- Use `TxDb.*` and `ensembldb` packages for working with gene models.
+- Use `AnnotationHub` to easily obtain select consortium-level resources
+- Access `biomaRt` and other internet-based resources for highly
+  flexible annotation.
+- Use `VariantAnnotation` and `VariantFiltering` for annotating SNPs.
+
 # Gene annotation
 
 ## Data packages
@@ -378,6 +390,17 @@ resources and so we will not pursue it in this course; see the
 vignettes that come with the pacakge, for instance
 [_AnnotationHub_ HOW-TOs](http://bioconductor.org/packages/devel/bioc/vignettes/AnnotationHub/inst/doc/AnnotationHub-HOWTO.html).
 
+# Annotating variants
+
+_Bioconductor_ provides facilities for reading VCF files. These work
+very well with the annotation resources described above, so for
+instance it is straight-forward to identify variants in coding or
+other regions of interest.
+
+To develop a sense of the capabilities available, work through the
+[VariantAnnotation][] vignette 'Introduction to Variant Annotation',
+and the [VariantFiltering][] vignette.
+
 
 [AnnotationDbi]: http://bioconductor.org/packages/AnnotationDbi
 [AnnotationHub]: http://bioconductor.org/packages/AnnotationHub
@@ -388,6 +411,8 @@ vignettes that come with the pacakge, for instance
 [Homo.sapiens]: http://bioconductor.org/packages/release/Homo.sapiens
 [Rsamtools]: http://bioconductor.org/packages/Rsamtools
 [TxDb.Hsapiens.UCSC.hg19.knownGene]: http://bioconductor.org/packages/TxDb.Hsapiens.UCSC.hg19.knownGene
+[VariantAnnotation]: http://bioconductor.org/packages/VariantAnnotation
+[VariantFiltering]: http://bioconductor.org/packages/VariantFiltering
 [biomaRt]: http://bioconductor.org/packages/biomaRt
 [org.Hs.eg.db]: http://bioconductor.org/packages/org.Hs.eg.db
 [org.Sc.sgd.db]: http://bioconductor.org/packages/org.Sc.sgd.db

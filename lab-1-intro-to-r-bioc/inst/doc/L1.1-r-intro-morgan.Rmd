@@ -23,6 +23,17 @@ Date: 11 July, 2016
 
 Back: [Monday labs](lab-1-intro-to-r-bioc.html)
 
+**Objective**: Gain confidence working with base R commands and data
+  structures.
+  
+**Lessons learned**:
+
+- Basic data input
+- Working with data.frames
+- Subsetting, including working with NA values and factors
+- Summary statistics
+- Visualization using base R and [ggplot2][]
+
 # R
 
 ## Language and environment for statistical computing and graphics
@@ -209,10 +220,10 @@ head(aggregate(SYMBOL ~ GO, symgo, function(x) {
 
 # Case studies
 
-## ALL phenotypic data
-
 These case studies serve as refreshers on _R_ input and manipulation
 of data.
+
+## ALL phenotypic data
 
 Input a file that contains ALL (acute lymphoblastic leukemia) patient
 information
@@ -505,11 +516,11 @@ brfss <- read.csv(fname)
 [biocViews]: http://bioconductor.org/packages/BiocViews.html#___Software
 [AnnotationData]: http://bioconductor.org/packages/BiocViews.html#___AnnotationData
 
-[aprof]: http://cran.r-project.org/web/packages/aprof/index.html
-[hexbin]: http://cran.r-project.org/web/packages/hexbin/index.html
+[aprof]: http://cran.r-project.org/web/packages/aprof
+[hexbin]: http://cran.r-project.org/web/packages/hexbin
 [lineprof]: https://github.com/hadley/lineprof
-[microbenchmark]: http://cran.r-project.org/web/packages/microbenchmark/index.html
-
+[microbenchmark]: http://cran.r-project.org/web/packages/microbenchmark
+[ggplot2]: http://cran.r-project.org/web/packages/ggplot2
 
 [AnnotationDbi]: http://bioconductor.org/packages/AnnotationDbi
 [BSgenome]: http://bioconductor.org/packages/BSgenome

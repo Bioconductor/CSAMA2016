@@ -25,7 +25,16 @@ Original Authors: Martin Morgan, Sonali Arora<br />
 Presenting Author: Martin Morgan (<a
   href="mailto:martin.morgan@roswellpark.org">martin.morgan@roswellpark.org</a>)<br />
 Date: 11 July, 2016
+
 Back: [Monday labs](lab-1-intro-to-r-bioc.html)
+
+**Objective**: An overview of software available in _Bioconductor_.
+
+**Lessons learned**: 
+
+- How to discover _Bioconductor_ packages and their documentation.
+- Essentials of working with S4 objects -- the `DNAStringSet`.
+- Identification of important packages in select _Bioconductor_ domains.
 
 # _Bioconductor_
 
@@ -43,7 +52,7 @@ Analysis and comprehension of high-throughput genomic data
 
 ![Alt Sequencing Ecosystem](our_figures/SequencingEcosystem.png)
 
-- 1024 packages
+- 1211 packages
 - Discover and navigate via [biocViews][]
 - Package 'landing page', e.g., `r Biocpkg("Gviz")`
     - Title, author / maintainer, short description, citation,
@@ -181,6 +190,8 @@ reference manuals of two or three of the following packages.
   such as [VariantAnnotation][], [VariantFiltering][], and
   [ensemblVEP][]; packages for calling variants include, e.g.,
   [h5vc][] and [VariantTools][].
+- Single-cell 'omics are increasingly important. From the
+  [biocViews][] page, enter 'single cell' in the 'search table' field.
 - Several packages identify copy number variants from sequence data,
   including [cn.mops][]; from the [biocViews][] page, what other copy
   number packages are available? The [CNTools][] package provides some
@@ -244,6 +255,16 @@ examples to explore during this lab include:
 - Take a quick look (there are more activites in other labs) at the
   [annotation work flow](http://bioconductor.org/help/workflows/annotation/annotation/)
   on the _Bioconductor_ web site.
+  
+A number of _Bioconductor_ packages help with visualization and
+reporting, in addition to functions provided by indiidual packages.
+
+- [Gviz][] provides a track-like visualization of genomic regions;
+  it's got an amazing vignette.
+- [ComplexHeatmap][] does an amazing job of all sorts of heatmaps,
+  including OncoPrint-style summaries.
+- [ReportingTools][] provides a flexible way to generate static and
+  dynamic HTML-based reports.
 
 # Summary
 
@@ -270,6 +291,7 @@ overall package use.
 [ChIPQC]: http://bioconductor.org/packages/ChIPQC
 [ChIPpeakAnno]: http://bioconductor.org/packages/ChIPpeakAnno
 [ChIPseeker]: http://bioconductor.org/packages/ChIPseeker
+[ComplexHeatmap]: http://bioconductor.org/packages/ComplexHeatmap
 [csaw]: http://bioconductor.org/packages/csaw
 [DESeq2]: http://bioconductor.org/packages/DESeq2
 [DiffBind]: http://bioconductor.org/packages/DiffBind
@@ -281,6 +303,7 @@ overall package use.
 [PSICQUIC]: http://bioconductor.org/packages/PSICQUIC
 [rtracklayer]: http://bioconductor.org/packages/rtracklayer
 [Rsamtools]: http://bioconductor.org/packages/Rsamtools
+[ReportingTools]: http://bioconductor.org/packages/ReportingTools
 [ShortRead]: http://bioconductor.org/packages/ShortRead
 [VariantAnnotation]: http://bioconductor.org/packages/VariantAnnotation
 [VariantFiltering]: http://bioconductor.org/packages/VariantFiltering
