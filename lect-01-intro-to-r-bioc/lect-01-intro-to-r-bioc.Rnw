@@ -185,7 +185,7 @@ ggplot(df, aes(x, y)) +
   \end{columns}
   \medskip\par
 <<se, eval=FALSE>>=
-assay(se)[,se$Treatment == "Control"]  # Control counts
+se[, se$Treatment == "Control"]  # Control samples only
 @     
 \end{frame}
 
