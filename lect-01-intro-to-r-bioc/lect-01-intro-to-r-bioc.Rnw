@@ -20,32 +20,6 @@ suppressPackageStartupMessages({
 
 \section{R}
 
-\begin{frame}{\R: Statistical Computing Environment}
-  \begin{itemize}
-  \item Vectors -- logical, integer, numeric, character, \ldots
-    \begin{itemize}
-    \item \Rcode{list()} -- contains other vectors (recursive)
-    \item \Rcode{factor()}, \Rcode{NA} -- statistical concepts
-    \item Can be \emph{named} -- \Rcode{c(Germany=1, Argentina=0)}
-    \end{itemize}
-  \item \Rcode{matrix()}, \Rcode{array()} -- a vector with a `dim'
-    attribute.
-  \item \Rcode{data.frame()} -- like spreadsheets; list of equal
-    length vectors.
-    \begin{itemize}
-    \item Homogenous types within a column, heterogenous types across
-      columns.
-    \item An example of an \R{} \emph{class}.
-    \end{itemize}
-  \item Other classes -- more complicated arrangement of vectors.
-    \begin{itemize}
-    \item Examples: the value returned by \Rcode{lm()}; the
-      \Rclass{DNAStringSet} class used to hold DNA sequences.
-    \item plain, `accessor', `generic', and `method' functions
-    \end{itemize}
-  \item Packages -- base, recommended, contributed.
-  \end{itemize}
-\end{frame}
 
 \begin{frame}[fragile]{\R: Statistical Computing Environment}
 
@@ -56,6 +30,7 @@ y <- x + rnorm(1000, sd=.8) # vectorized calculation
 df <- data.frame(x=x, y=y)  # object construction
 fit <- lm(y ~ x, df)        # linear model, formula
 class(fit)                  # discovery
+head(methods(class="lm"), 3)
 @ 
 
 \end{frame}
@@ -78,6 +53,33 @@ ggplot(df, aes(x, y)) +
 @ 
   \end{columns}
   
+\end{frame}
+
+\begin{frame}{\R: Statistical Computing Environment}
+  \begin{itemize}
+  \item Vectors -- logical, integer, numeric, character, \ldots
+    \begin{itemize}
+    \item \Rcode{list()} -- contains other vectors (recursive)
+    \item \Rcode{factor()}, \Rcode{NA} -- statistical concepts
+    \item Can be \emph{named} -- \Rcode{c(Portugal=1, France=0)}
+    \end{itemize}
+  \item \Rcode{matrix()}, \Rcode{array()} -- a vector with a `dim'
+    attribute.
+  \item \Rcode{data.frame()} -- like spreadsheets; list of equal
+    length vectors.
+    \begin{itemize}
+    \item Homogenous types within a column, heterogenous types across
+      columns.
+    \item An example of an \R{} \emph{class}.
+    \end{itemize}
+  \item Other classes -- more complicated arrangement of vectors.
+    \begin{itemize}
+    \item Examples: the value returned by \Rcode{lm()}; the
+      \Rclass{DNAStringSet} class used to hold DNA sequences.
+    \item function, `generic', and `method'
+    \end{itemize}
+  \item Packages -- base, recommended, contributed.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{\R: programming concepts}
@@ -125,7 +127,7 @@ ggplot(df, aes(x, y)) +
 \begin{frame}{\Bioconductor{}}
   Analysis \& comprehension of high-throughput genomic data
   \begin{itemize}
-  \item $>12$ years old; 1024 packages; widely used
+  \item $15$ years old; 1211 packages; widely used
   \item Sequencing (RNAseq, ChIPseq, variants, copy number, \ldots),
     microarrays, flow cytometery, proteomics, \ldots
   \item \url{http://bioconductor.org}, \url{https://support.bioconductor.org}

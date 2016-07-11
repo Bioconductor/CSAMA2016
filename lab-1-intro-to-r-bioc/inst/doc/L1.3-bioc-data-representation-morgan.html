@@ -92,6 +92,12 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 <p>Original Authors: Martin Morgan, Sonali Arora<br /> Presenting Author: Martin Morgan (<a href="mailto:martin.morgan@roswellpark.org">martin.morgan@roswellpark.org</a>)<br /> Date: 11 July, 2016 Back: <a href="lab-1-intro-to-r-bioc.html">Monday labs</a></p>
+<p><strong>Objective</strong>: Learn the essentials of <em>Bioconductor</em> data structures</p>
+<p><strong>Lessons learned</strong>:</p>
+<ul>
+<li>Review of common bioinformatic file formats: FASTA, FASTQ, SAM / BAM, VCF, BED / WIG / GTF</li>
+<li>How to work with <em>Bioconductor</em> objects for DNA sequences, genomic ranges, aligned reads, and called variants.</li>
+</ul>
 <div id="classes-methods-and-packages" class="section level1">
 <h1><span class="header-section-number">1</span> Classes, methods, and packages</h1>
 <p>This section focuses on classes, methods, and packages, with the goal being to learn to navigate the help system and interactive discovery facilities.</p>
@@ -148,6 +154,7 @@ ir</code></pre>
 ## 
 ## Extends: 
 ## Class &quot;Ranges&quot;, directly
+## Class &quot;GRangesOrIRanges&quot;, directly
 ## Class &quot;IntegerList&quot;, by class &quot;Ranges&quot;, distance 2
 ## Class &quot;RangesORmissing&quot;, by class &quot;Ranges&quot;, distance 2
 ## Class &quot;AtomicList&quot;, by class &quot;Ranges&quot;, distance 3
@@ -199,10 +206,12 @@ gr</code></pre>
 ## 
 ## Extends: 
 ## Class &quot;GenomicRanges&quot;, directly
+## Class &quot;GRangesOrIRanges&quot;, directly
 ## Class &quot;Vector&quot;, by class &quot;GenomicRanges&quot;, distance 2
 ## Class &quot;GenomicRangesORmissing&quot;, by class &quot;GenomicRanges&quot;, distance 2
-## Class &quot;Annotated&quot;, by class &quot;GenomicRanges&quot;, distance 3
-## Class &quot;GenomicRangesORGRangesList&quot;, by class &quot;GenomicRanges&quot;, distance 2</code></pre>
+## Class &quot;GenomicRangesORGRangesList&quot;, by class &quot;GenomicRanges&quot;, distance 2
+## Class &quot;GenomicRangesORGenomicRangesList&quot;, by class &quot;GenomicRanges&quot;, distance 2
+## Class &quot;Annotated&quot;, by class &quot;GenomicRanges&quot;, distance 3</code></pre>
 <pre class="r"><code>?&quot;flank,GenomicRanges-method&quot;</code></pre>
 <p>Notice that the available <code>flank()</code> methods have been augmented by the methods defined in the <em>GenomicRanges</em> package.</p>
 <p>It seems like there might be a number of helpful methods available for working with genomic ranges; we can discover some of these from the command line, indicating that the methods should be on the current <code>search()</code> path</p>
@@ -470,16 +479,8 @@ letterFrequency(chr14_dna, &quot;GC&quot;, as.prob=TRUE)</code></pre>
 <ul>
 <li><p>Find reads supporting the junction identified above, at position 19653707 + 66M = 19653773 of chromosome 14</p>
 <pre class="r"><code>library(GenomicRanges)
-library(GenomicAlignments)</code></pre>
-<pre><code>## Loading required package: SummarizedExperiment</code></pre>
-<pre><code>## Loading required package: Biobase</code></pre>
-<pre><code>## Welcome to Bioconductor
-## 
-##     Vignettes contain introductory material; view with
-##     'browseVignettes()'. To cite Bioconductor, see
-##     'citation(&quot;Biobase&quot;)', and for packages 'citation(&quot;pkgname&quot;)'.</code></pre>
-<pre><code>## Loading required package: Rsamtools</code></pre>
-<pre class="r"><code>library(Rsamtools)
+library(GenomicAlignments)
+library(Rsamtools)
 
 ## our 'region of interest'
 roi &lt;- GRanges(&quot;chr14&quot;, IRanges(19653773, width=1)) 
@@ -597,10 +598,23 @@ head(coding)</code></pre>
 <div id="big-data" class="section level1">
 <h1><span class="header-section-number">5</span> Big data</h1>
 <p>Much Bioinformatic data is very large. The discussion so far has assumed that the data can be read into memory. Here we mention two important general strategies for working with large data; we will explore these in greater detail in a later lab, but feel free to ask questions and explore this material now.</p>
-<p>Restriction - e.g., <code>ScanBamParam()</code> limits input to desired data at specific genomic ranges</p>
-<p>Iteration - e.g., <code>yieldSize</code> argument of <code>BamFile()</code>, or <code>FastqStreamer()</code> allows iteration through large files.</p>
-<p>Compression - Genomic vectors represented as <code>Rle</code> (run-length encoding) class - Lists e.g., <code>GRangesList</code> are efficiently maintain the illusion that vector elements are grouped.</p>
-<p>Parallel processing - e.g., via <a href="http://bioconductor.org/packages/BiocParallel">BiocParallel</a> package</p>
+<p>Restriction</p>
+<ul>
+<li>e.g., <code>ScanBamParam()</code> limits input to desired data at specific genomic ranges</li>
+</ul>
+<p>Iteration</p>
+<ul>
+<li>e.g., <code>yieldSize</code> argument of <code>BamFile()</code>, or <code>FastqStreamer()</code> allows iteration through large files.</li>
+</ul>
+<p>Compression</p>
+<ul>
+<li>Genomic vectors represented as <code>Rle</code> (run-length encoding) class</li>
+<li>Lists e.g., <code>GRangesList</code> are efficiently maintain the illusion that vector elements are grouped.</li>
+</ul>
+<p>Parallel processing</p>
+<ul>
+<li>e.g., via <a href="http://bioconductor.org/packages/BiocParallel">BiocParallel</a> package</li>
+</ul>
 <p>Reference</p>
 <ul>
 <li>Lawrence, M and Morgan, M. Scalable Genomic Computing and Visualization with <em>R</em> and <em>Bioconductor</em>. Statistical Science 29</li>

@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", function() {
 <li><a href="#exercises-1"><span class="toc-section-number">2.3</span> Exercises</a></li>
 </ul></li>
 <li><a href="#annotationhub"><span class="toc-section-number">3</span> AnnotationHub</a></li>
+<li><a href="#annotating-variants"><span class="toc-section-number">4</span> Annotating variants</a></li>
 </ul>
 </div>
 
@@ -81,6 +82,15 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 </script>
 <p>Original Authors: Martin Morgan, Sonali Arora<br /> Presenting Author: Martin Morgan (<a href="mailto:martin.morgan@roswellpark.org">martin.morgan@roswellpark.org</a>)<br /> Date: 11 July, 2016 Back: <a href="lab-1-intro-to-r-bioc.html">Monday labs</a></p>
+<p><strong>Objective</strong>: Learn about <em>Bioconductor</em> resources for gene and genome annotation.</p>
+<p><strong>Lessons learned</strong>:</p>
+<ul>
+<li>Use <code>org.*</code> packages for mapping between gene symbols.</li>
+<li>Use <code>TxDb.*</code> and <code>ensembldb</code> packages for working with gene models.</li>
+<li>Use <code>AnnotationHub</code> to easily obtain select consortium-level resources</li>
+<li>Access <code>biomaRt</code> and other internet-based resources for highly flexible annotation.</li>
+<li>Use <code>VariantAnnotation</code> and <code>VariantFiltering</code> for annotating SNPs.</li>
+</ul>
 <div id="gene-annotation" class="section level1">
 <h1><span class="header-section-number">1</span> Gene annotation</h1>
 <div id="data-packages" class="section level2">
@@ -429,6 +439,11 @@ abline(v=start(roi) + (end(roi) - start(roi) + 1) / 2, col=&quot;blue&quot;)</co
 <li>Programmatically access the genomic coordiantes of clinically relevant variants cataloged in dbSNP.</li>
 </ul>
 <p>Unfortunately, <a href="http://bioconductor.org/packages/AnnotationHub">AnnotationHub</a> makes extensive use of internet resources and so we will not pursue it in this course; see the vignettes that come with the pacakge, for instance <a href="http://bioconductor.org/packages/devel/bioc/vignettes/AnnotationHub/inst/doc/AnnotationHub-HOWTO.html"><em>AnnotationHub</em> HOW-TOs</a>.</p>
+</div>
+<div id="annotating-variants" class="section level1">
+<h1><span class="header-section-number">4</span> Annotating variants</h1>
+<p><em>Bioconductor</em> provides facilities for reading VCF files. These work very well with the annotation resources described above, so for instance it is straight-forward to identify variants in coding or other regions of interest.</p>
+<p>To develop a sense of the capabilities available, work through the <a href="http://bioconductor.org/packages/VariantAnnotation">VariantAnnotation</a> vignette ‘Introduction to Variant Annotation’, and the <a href="http://bioconductor.org/packages/VariantFiltering">VariantFiltering</a> vignette.</p>
 </div>
 
 
