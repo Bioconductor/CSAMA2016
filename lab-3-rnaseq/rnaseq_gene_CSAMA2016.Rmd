@@ -873,11 +873,50 @@ appropriate input data for each of them.
 
 ## Transformations
 
-# TODO write some code about VST
+Many common statistical methods for exploratory analysis of
+multidimensional data, for example clustering and *principal
+components analysis* (PCA), work best for data that generally has the
+same range of variance at different ranges of the mean values. When
+the expected amount of variance is approximately the same across
+different mean values, the data is said to be *homoskedastic*.  For
+RNA-seq raw counts, however, the variance grows with the mean.  For
+example, if one performs PCA directly on a matrix of
+size-factor-normalized read counts, the result typically depends only
+on the few most strongly expressed genes because they show the largest
+absolute differences between samples.  A simple and often used
+strategy to avoid this is to take the logarithm of the normalized
+count values plus a small pseudocount; however, now the genes with the
+very lowest counts will tend to dominate the results because, due to
+the strong Poisson noise inherent to small count values, and the fact
+that the logarithm amplifies differences for the smallest values,
+these low count genes will show the strongest relative differences
+between samples.
+
+As a solution, *DESeq2* offers transformations for count data that
+stabilize the variance across the mean: the *regularize logarithm* (rlog) and the 
+*variance stabilizing transformation* (VST).
+These have slightly different implementations, discussed a bit
+in the *DESeq2* paper and in the vignette, but a similar goal of stablizing
+the variance across the range of values. Both produce log2-like values
+for high counts. Here we will use the variance stabilizing transformation implemented with the `vst` function:
 
 ```{r}
 vsd <- vst(dds)
 ```
+
+This returns a *DESeqTransform* object
+
+```{r}
+class(vsd)
+```
+
+...which contains all the 
+column metadata that was attached to the *DESeqDataSet*:
+
+```{r}
+head(colData(vsd),3)
+```
+
 
 ## PCA plot
 
@@ -1164,10 +1203,7 @@ tt.treat <- topTags(treatres, n = nrow(y), sort.by = "none")
 table(DESeq2 = resLFC1$padj < 0.1, edgeR = tt.treat$table$FDR < 0.1)
 ```
 
-
-# TODO write more
-
-Ranks:
+We can compare the two lists by the ranks:
 
 ```{r}
 common <- !is.na(res$padj)
@@ -1376,8 +1412,6 @@ other plots are available.
 
 Note that the Glimma functions take a minute to build.
 
-### TODO write more...
-
 edgeR results:
 
 ```{r eval=FALSE}
@@ -1438,8 +1472,11 @@ coverage that we could actually test for differential expression. In DESeq2, we
 can simply take the genes that survived independent filtering (see above) and hence
 got assigned an adjusted p value.
 
+We will use the set of genes that had evidence of a fold change greater than 2 
+(log2 fold change greater than 1):
+
 ```{r}
-resTested <- res[ !is.na(res$padj), ]
+resTested <- resLFC1[ !is.na(resLFC1$padj), ]
 ```
 
 Then, we construct a factor containing ones and zeroes to indicate which of these genes
@@ -1454,7 +1491,7 @@ names(genelistUp) <- rownames(resTested)
 Now, we load the topGO package and prepare a data structure for testing. 
 
 ```{r message=FALSE}
-library( topGO )
+library("topGO")
 
 myGOdata <- new( "topGOdata",
    ontology = "BP",
