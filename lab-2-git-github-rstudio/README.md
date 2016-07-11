@@ -5,6 +5,10 @@ Jenny Bryan
 
 Please see <http://happygitwithr.com> for all material. Here's the underlying GitHub repo: <https://github.com/jennybc/happy-git-with-r>.
 
+I didn't realize I wouldn't be presenting! Here are slides students can walk through, with prompts to go do hands-on activities:
+
+https://github.com/Bioconductor/CSAMA2016/blob/master/lab-2-git-github-rstudio/happy-git-with-r-workshop-slides.pdf
+
 Everything in **Installation** should have been done in advance.
 
 -   [Register a GitHub account](http://happygitwithr.com/github-acct.html)
