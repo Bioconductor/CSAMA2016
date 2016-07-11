@@ -4,7 +4,7 @@ Title: Lab 1: Introduction to R / Bioconductor.
 Description: This package contains lab vignettes, data,
     and short functions for use in CSAMA 2016 Lab 1.
 Authors@R:
-    person("Martin", "Morgan", email="mtmorgan@fredhutch.org", role="aut")
+    person("Martin", "Morgan", email="mtmorgan@fredhutch.org", role="cre")
 Suggests:
     AnnotationHub,
     BSgenome.Hsapiens.UCSC.hg19,

@@ -25,6 +25,15 @@ Presenting Author: Martin Morgan (<a
 Date: 11 July, 2016
 Back: [Monday labs](lab-1-intro-to-r-bioc.html)
 
+**Objective**: Learn the essentials of _Bioconductor_ data structures
+
+**Lessons learned**: 
+
+- Review of common bioinformatic file formats: FASTA, FASTQ, SAM /
+  BAM, VCF, BED / WIG / GTF
+- How to work with _Bioconductor_ objects for DNA sequences, genomic
+  ranges, aligned reads, and called variants.
+
 # Classes, methods, and packages
 
 This section focuses on classes, methods, and packages, with the goal
@@ -75,7 +84,7 @@ getClass(class(ir))
 ```
 
 Notice that `IRanges` extends the `Ranges` class. Now try entering
-`?flank` (`?"flank,<tab>"` if not using _RStudio, where `<tab>` means
+`?flank` (`?"flank,<tab>"` if not using _RStudio_, where `<tab>` means
 to press the tab key to ask for tab completion). You can see that
 there are help pages for `flank` operating on several different
 classes. Select the completion
@@ -131,7 +140,8 @@ showMethods(class="GRanges", where=search())
 
 Use `help()` to list the help pages in the `GenomicRanges` package,
 and `vignettes()` to view and access available vignettes; these are
-also available in the Rstudio 'Help' tab.
+also available in the RStudio 'Help' tab.
+
 ```{r granges-man-and-vignettes, eval=FALSE}
 help(package="GenomicRanges")
 vignette(package="GenomicRanges")
@@ -522,19 +532,23 @@ explore these in greater detail in a later lab, but feel free to ask
 questions and explore this material now.
 
 Restriction
+
 - e.g., `ScanBamParam()` limits input to desired data at specific
   genomic ranges
 
 Iteration
+
 - e.g., `yieldSize` argument of `BamFile()`, or `FastqStreamer()`
   allows iteration through large files.
 
 Compression
+
 - Genomic vectors represented as `Rle` (run-length encoding) class
 - Lists e.g., `GRangesList` are efficiently maintain the illusion that
   vector elements are grouped.
 
 Parallel processing
+
 - e.g., via [BiocParallel][] package
 
 Reference
@@ -542,6 +556,7 @@ Reference
 - Lawrence, M and Morgan, M. Scalable Genomic Computing and
   Visualization with _R_ and _Bioconductor_. Statistical Science 29
   (2) (2014), [214-226](http://arxiv.org/abs/1409.2864).
+
 
 # Exercises
 
