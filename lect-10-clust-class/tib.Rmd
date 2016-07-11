@@ -27,6 +27,12 @@ library(GenomicRanges)
     - DNAStringSet in a column
     - many natural coercions for use with dplyr
 
+The key design principle is that the columns of DataFrame satisfy a simple
+API, specifically
+
+    - `length()`
+    - `[`, `[<-`
+
 # Illustration
 
 ```{r getseq}
