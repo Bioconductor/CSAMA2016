@@ -34,6 +34,14 @@ colleagues and the TAs as needed. If you're relatively new to _R_,
 then consider doing sections 1 and 3. If you're new to _Bioconductor_,
 then skim the second and focus on the third and fourth sections.
 
+Download these files:
+
+- [ALLphenoData.tsv][../extdata/ALLphenoData.tsv]
+- [BRFSS-subset.csv][../extdata/BRFSS-subset.csv]
+- [symgo.csv][../extdata/symgo.csv]
+
+Choose the material you'd like to cover:
+
 1.1 [Introduction to _R_](L1.1-r-intro-morgan.html) -- Gain confidence
     working with base R commands and data structures.
 
@@ -45,3 +53,4 @@ then skim the second and focus on the third and fourth sections.
 
 1.4 [Annotation](L1.4-bioc-annotation-morgan.html) -- Learn about
     _Bioconductor_ resources for gene and genome annotation.
+
