@@ -1,11 +1,10 @@
 
 ---
 title: "Introduction to Linear Models"
-author: "Levi Waldron"
+author: "Levi Waldron, CUNY School of Public Health"
 date: "July 11, 2016"
 output:
-  slidy_presentation: default
-  ioslides_presentation:
+  slidy_presentation: 
     css: styles.css
     logo: logo.png
 ---
@@ -16,8 +15,8 @@ Based on Love and Irizarry, [Data Analysis for the Life Sciences](https://leanpu
 
 * Multiple linear regression
     + Continuous and categorical predictors
+    + Interactions
 * Model formulae
-* Interactions
 * Design matrix
 * Analysis of Variance
 
@@ -66,9 +65,9 @@ summary(spider)
 - Linear models model a response variable $Y_i$ as a linear combination of predictors, plus randomly distributed noise.
 - Which of the following are examples of linear models?
 
-1. $Y_i = \beta_0 + \beta_1 x_i + \varepsilon_i$
-2. $Y_i = \beta_0 + \beta_1 x_i + \beta_2 x_i^2 + \varepsilon_i$
-3. $Y_i = \beta_0 + \beta_1 x_i + \beta_2 \times 2^{x_i} + \varepsilon_i$
+1. $y_i = \beta_0 + \beta_1 x_i + \varepsilon_i$
+2. $y_i = \beta_0 + \beta_1 x_i + \beta_2 x_i^2 + \varepsilon_i$
+3. $y_i = \beta_0 + \beta_1 x_i + \times 2^{\beta_2 x_i} + \varepsilon_i$
 
 Where: $i=1,\dots,N$
 
@@ -78,8 +77,8 @@ Assumption: $\varepsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsilon^2)$
 
 The following are examples of linear models:
 
-1. $Y_i = \beta_0 + \beta_1 x_i + \varepsilon_i$ (simple linear regression)
-2. $Y_i = \beta_0 + \beta_1 x_i + \beta_2 x_i^2 + \varepsilon_i$ (quadratic regression)
+1. $y_i = \beta_0 + \beta_1 x_i + \varepsilon_i$ (simple linear regression)
+2. $y_i = \beta_0 + \beta_1 x_i + \beta_2 x_i^2 + \varepsilon_i$ (quadratic regression)
 
 ## Multiple linear regression model
 
@@ -132,7 +131,7 @@ Assumptions of linear models: $\epsilon_i \stackrel{iid}{\sim} N(0, \sigma_\epsi
 - R re-codes factors to dummy variables automatically. 
 - Note that factors can be *ordered* or *unordered*
 
-# Model formulae
+# Model formulae in R
 
 ## Model formulae in R
 
@@ -177,7 +176,7 @@ print(fit.table, type="html")
 * How to interpret this table?
     * Coefficients for **(Intercept)** and **typepush**
     * Coefficients are t-distributed when assumptions are correct
-    * Variance in the estimates of each coefficient can be calculated
+    * Standard Error is the sampling variance of the estimates
 
 ## Interpretation of coefficients
 
@@ -249,7 +248,7 @@ $$
 E[y|x] = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + \beta_{12} x_1*x_2
 $$
 
-## Model formulae (cont'd)
+## Summary: model formulae
 
 symbol  | example | meaning
 ------- | ------------ | --------------------------  
