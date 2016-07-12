@@ -1,0 +1,11 @@
+Package: drosmap
+Title: fruitfly cell fate map from NMF on spatial expression matrix
+Version: 0.0.0
+Author: Siqi Wu <siqi@stat.berkeley.edu>
+Description: fruitfly cell fate map from NMF on spatial expression matrix
+Suggests: 
+Depends: NMF, knitcitations, grid, png
+Maintainer: VJ Carey <stvjc@channing.harvard.edu>
+License: Artistic-2.0
+LazyLoad: yes
+BiocViews:
