@@ -416,12 +416,13 @@ library("GenomicAlignments")
 library("BiocParallel")
 ```
 
-Most modern laptops have CPUs have with two or four cores, hence we gain a bit of speed
-by asking to use two cores. We could have also skipped this line and the counting 
-step would run in serial.
+If you have multiple cores available, for example, if you are on a cluster
+you could speed up the following `summarizeOverlaps` call by registering
+a `MulticoreParam` with the number of cores to use. Here we only
+use a single core:
 
 ```{r}
-register(MulticoreParam(2))
+register(SerialParam())
 ```
 
 The following call creates the *SummarizedExperiment* object with counts:
