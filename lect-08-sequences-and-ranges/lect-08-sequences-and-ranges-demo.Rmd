@@ -9,3 +9,137 @@ vignette: >
 output: 
   BiocStyle::html_document
 ---
+
+```{r setup, echo=FALSE, warning=FALSE}
+options(max.print=1000, width=100)
+suppressPackageStartupMessages({
+    library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+    library(BSgenome.Hsapiens.UCSC.hg19)
+    library(tibble)
+    library(GenomicRanges)
+    library(ggplot2)
+    library(tibble)
+    library(magrittr)
+})
+
+ex <- exons(TxDb.Hsapiens.UCSC.hg19.knownGene)
+ex <- keepStandardChromosomes(ex)
+ex$exon_id <- NULL
+
+seq <- getSeq(BSgenome.Hsapiens.UCSC.hg19, ex)
+```
+
+# Sequences
+
+
+```{r}
+dna0 <- c("AACAT", "CCCACT")
+```
+
+- Could represent as simple character vector, but...
+- Not all character vectors are DNA sequences
+- Specialized methods are appropriate to DNA sequences, e.g., reverse
+  complement
+
+```{r}
+dna <- DNAStringSet(dna0)
+methods(class=class(dna))
+reverseComplement(dna)
+```
+
+A more extensive example
+
+```{r}
+seq
+head(width(seq))
+
+df <- data.frame(
+    width=width(seq),
+    GC=letterFrequency(seq, "GC", as.prob=TRUE)[, "G|C"])
+ggplot(df, aes(x=log10(width))) + geom_histogram()
+ggplot(df, aes(x=GC)) + geom_histogram()
+ggplot(subset(df, width > 100 & width < 10000), aes(x=log10(width), y=GC)) +
+    geom_point(pch=".") + geom_smooth()
+```
+
+Advanced concept:
+
+- 'Vector'-like -- `length()`, `[`, `[[`
+
+# Ranges
+
+```{r}
+q <- GRanges("chr1", IRanges(10, 20))
+s <- GRanges("chr1", IRanges(5, width=c(3, 6, 9)))
+findOverlaps(q, s)
+```
+
+A more extensive example
+
+```{r}
+ex
+table(strand(ex))
+hist(log10(width(ex)))
+flank(ex, 1000)
+```
+
+Arbitrary additional columns
+
+```{r}
+ex$seq <- seq
+ex$GC <- letterFrequency(seq, "GC", as.prob=TRUE)[, "G|C"]
+ex
+```
+
+Information about ranges
+
+- Really important to provide provenance
+- [GenomeInfoDb][] package helps manage
+
+```{r}
+seqinfo(ex)
+```
+
+# What's to love about a data.frame?
+
+- Coordination
+- Familiarity
+- Interoperability
+
+And yet...
+
+- How are two data.frame's related to one another?
+- Meaning _of_ columns in a data.frame?
+- All columns are not equal
+- Not every column is a base R vector
+
+Loving, leaving, and coming back
+
+```{r}
+library(tibble)
+ex
+as_tibble(ex)
+```
+
+What have I lost?
+
+- 'Required' columns
+- Constraints on columns -- width == end - start + 1; >= 0
+- Semantic meaning -- strand
+- Properties of DNAStringSet
+- Metadata
+
+Coming back
+
+```{r}
+as_tibble(ex) %>% makeGRangesFromDataFrame
+```
+
+Principled versus precocious?
+
+- The tidyverse as principled -- a few well-designed orthogonal
+  functions operating exclusively (?) on data.frame derivatives
+- _R_ and _Bioconductor_ as precocious -- a large number of classes
+  and specialized functions
+- Some of preciousness is lack of principle, but some reflects
+  high-level summary of complex work flows
