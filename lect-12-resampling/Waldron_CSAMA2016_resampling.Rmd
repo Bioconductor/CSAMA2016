@@ -5,10 +5,6 @@ author: "Levi Waldron, CUNY School of Public Health"
 date: "July 13, 2016"
 output:
   beamer_presentation: default
-  ioslides_presentation: default
-  slidy_presentation:
-    css: styles.css
-    logo: logo.png
 ---
 
 ## Outline and introduction
@@ -50,7 +46,7 @@ ISLR Chapter 5: James, G. _et al._ An Introduction to Statistical Learning: with
      - _e.g._ sensitivity/specificity for binary outcome
      - _e.g._ mean-squared prediction error for continuous outcome
 
-Cross-validation
+**Cross-validation**
 
 # Cross-validation
 
@@ -73,17 +69,15 @@ Cross-validation
 
 ## Variability in cross-validation
 
-![Variability of 2-fold cross-validation](ISLR_Fig52.png)
-
-\center ISLR Figure 5.2: Variability in 2-fold cross-validation
+![Variability of 2-fold cross-validation (ISLR Figure 5.2)](ISLR_Fig52.png)
 
 
 ## Bias-variance trade-off in cross-validation
 
-* *Key point:* we are talking about bias and variance of the overall MSE estimate, not between the folds.
+* *Key point:* we are talking about bias and variance of the overall accuracy estimate, not between the folds.
 * 2-fold CV produces a _high-bias_, _low-variance_ estimate:
-     - training on fewer samples causes upward bias in MSE
-     - low correlation between models means low variance in average MSE
+     - training on fewer samples causes upward bias in error rate
+     - low correlation between models means low variance in average error rate
 * Leave-on-out CV produces a _low-bias_, _high-variance_ estimate:
      - training on $n-1$ samples is almost as good as on $n$ samples (almost no bias in prediction error)
      - models are almost identical, so average has a high variance
@@ -112,26 +106,24 @@ http://hunch.net/?p=22
 ## Cross-validation caveats (cont'd)
 
 * Tuning plus accuracy estimation requires **nested** cross-validation
-* Example: training and test sets simulated from identical true model
+* Example: high-dimensional training and test sets simulated from identical true model
     - Penalized regression models tuned by 5-fold CV
+    - Tuning by cross-validation does _not_ prevent over-fitting
 
-<center>
-![Over-fitting when tuning by cross-validation](Waldron_Fig1B.png)
-</center>
+ \centerline{\includegraphics[height=1in]{Waldron_Fig1B.png}}
 
-<small>
+
+\small
 Waldron _et al._: **Optimized application of penalized regression methods to diverse genomic data.** Bioinformatics 2011, 27:3399–3406.
-</small>
 
 ## Cross-validation caveats (cont'd)
 
 * Cross-validation estimates assume that the sample is representative of the population
 
-![Cross-validation vs. cross-study validation](F2large.jpg)
+![Cross-validation vs. cross-study validation in breast cancer prognosis](F2large.jpg)
 
-<small>
+\small
 Bernau C _et al._: **Cross-study validation for the assessment of prediction algorithms.** Bioinformatics 2014, 30:i105–12.
-</small>
 
 # Permutation test
 
@@ -141,16 +133,18 @@ Bernau C _et al._: **Cross-study validation for the assessment of prediction alg
     + _e.g._ $t$, $\chi^2$ distribution
 * Permutation testing: $H_0$ determined empirically using permutations of the data where $H_0$ is guaranteed to be true
 
-## Permutation test - pros and cons
-
-* Pros:
-    + does not require distributional assumptions
-    + can be applied to any test statistic
-
-* Cons: 
-    + less useful for small sample sizes
-    + p-values usually cannot be estimated with sufficient precision for heavy multiple testing correction
-    + in naive implementations, can get p-values of "0"
+```{r, echo=FALSE, fig.height=4.5}
+set.seed(1)
+xdat=matrix(rnorm(1000), ncol=20)
+ydat=sample(0:1, size=nrow(xdat), replace=TRUE)
+x = xdat + 2*ydat
+pc=prcomp(x)
+##Plot PCA
+par(mfrow=c(1,2))
+plot(pc$x[, 1:2], col=ydat+1, pch=ydat+1, cex=1.5, main="original data")
+yperm=sample(ydat)
+plot(pc$x[, 1:2], col=yperm+1, pch=yperm+1, cex=1.5, main="permuted data")
+```
 
 ## Steps of permutation test:
 
@@ -169,6 +163,17 @@ $$
 
 * Why add 1? 
     + Phipson B, Smyth GK: **Permutation P-values should never be zero: calculating exact P-values when permutations are randomly drawn.** Stat. Appl. Genet. Mol. Biol. 2010, 9:Article39.
+
+## Permutation test - pros and cons
+
+* Pros:
+    + does not require distributional assumptions
+    + can be applied to any test statistic
+
+* Cons: 
+    + less useful for small sample sizes
+    + p-values usually cannot be estimated with sufficient precision for heavy multiple testing correction
+    + in naive implementations, can get p-values of "0"
 
 ## Example from (sleep) data:
  - Sleep data show the effect of two soporific drugs (increase in hours of sleep compared to control) 

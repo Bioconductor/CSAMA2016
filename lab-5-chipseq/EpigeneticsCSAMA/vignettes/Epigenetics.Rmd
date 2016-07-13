@@ -1,7 +1,13 @@
 ---
 author:
-- 'Aleksandra P<span>e</span>kowska, Simon Anders'
+- 'Aleksandra Pekowska, Alejandro Reyes, Mike Smith, Simon Anders'
 title: 'Basics of ChIP-seq data analysis'
+output:
+  BiocStyle::html_document:
+    toc: true
+vignette: >
+  % \VignetteIndexEntry{Basics of ChIP-seq data analysis}
+  % \VignetteEngine{knitr::rmarkdown}
 ...
 
 # Introduction
