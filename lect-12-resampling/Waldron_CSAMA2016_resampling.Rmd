@@ -5,6 +5,7 @@ author: "Levi Waldron, CUNY School of Public Health"
 date: "July 13, 2016"
 output:
   beamer_presentation: default
+  ioslides_presentation: default
   slidy_presentation:
     css: styles.css
     logo: logo.png
@@ -111,11 +112,11 @@ http://hunch.net/?p=22
 ## Cross-validation caveats (cont'd)
 
 * Tuning plus accuracy estimation requires **nested** cross-validation
-* Example from training and test sets simulated from an identical true model
+* Example: training and test sets simulated from identical true model
     - Penalized regression models tuned by 5-fold CV
 
 <center>
-![](Waldron_Fig1B.png)
+![Over-fitting when tuning by cross-validation](Waldron_Fig1B.png)
 </center>
 
 <small>
@@ -126,7 +127,7 @@ Waldron _et al._: **Optimized application of penalized regression methods to div
 
 * Cross-validation estimates assume that the sample is representative of the population
 
-![](F2large.jpg)
+![Cross-validation vs. cross-study validation](F2large.jpg)
 
 <small>
 Bernau C _et al._: **Cross-study validation for the assessment of prediction algorithms.** Bioinformatics 2014, 30:i105–12.
@@ -234,8 +235,9 @@ t.test(extra ~ group, data=sleep)
 ```{r}
 set.seed(2)
 bootDiff = function(){
-  sleepboot = sleep[sample(1:nrow(sleep), replace = TRUE), ]
-  mean(sleepboot$extra[sleepboot$group==1]) - mean(sleepboot$extra[sleepboot$group==2])
+  boot = sleep[sample(1:nrow(sleep), replace = TRUE), ]
+  mean(boot$extra[boot$group==1]) - 
+    mean(boot$extra[boot$group==2])
 }
 bootR = replicate(1000, bootDiff())
 bootR[match(c(25, 975), rank(bootR))]
@@ -257,11 +259,12 @@ Reis PP, Waldron L, _et al._: **A gene signature in histologically normal surgic
 ## Example: oral carcinoma recurrence risk
 
 * Model was trained and validated using the maximum expression of each of 4 genes from any margin
-* What if only one margin were profiled?
-    1. take a bootstrap sample of patients
-    2. randomly select a single margin from each patient
-    3. calculate Hazard Ratio
-    4. Repeat to estimate confidence interval or perform hypothesis test
+
+![Oral carcinoma with histologically normal margins](MarginsSlide1.png)
+
+## Bootstrap estimation of HR for only one margin
+
+![Bootstrap re-sample with randomly selected margin](MarginsSlide2.png)
 
 ## Example: oral carcinoma recurrence risk
 
@@ -324,9 +327,13 @@ sum(replicate(1000, montePval(n=32)) < 0.05) / 1000
 |  | Procedure | Application |
 |------------------|---------------------------------|----------------------------|
 | Cross-Validation | Data is randomly divided into subsets. <br> Results validated across sub-samples. | Model tuning <br> Estimation of prediction accuracy |
-|---------------------|------------------------------------------------|--------------------------------------------|
+| | | |
 | Permutation Test | Samples of size N drawn at random *without* replacement. | Hypothesis testing |
-|---------------------|------------------------------------------------|--------------------------------------------|
+
+## Summary: resampling methods 
+
+|  | Procedure | Application |
+|------------------|---------------------------------|----------------------------|
 | Bootstrap | Samples of size N drawn at random *with* replacement. | Confidence intervals, hypothesis testing |
-|---------------------|------------------------------------------------|--------------------------------------------|
+| | | |
 | Monte Carlo | Data are sampled from a known distribution | Power estimation, Bayesian posterior probabilities |
