@@ -1,0 +1,56 @@
+---
+title: "Notes on tibble and S4Vectors::DataFrame"
+author: Vince Carey
+date: July 13, 2016
+output: 
+  html_document:
+    toc: yes
+---
+
+```{r setup,echo=FALSE,results="hide"}
+suppressMessages({
+suppressPackageStartupMessages({
+suppressWarnings({
+library(BiocStyle)
+library(BSgenome.Hsapiens.UCSC.hg19)
+library(GenomicRanges)
+})
+})
+})
+```
+
+# Overview
+
+- tibble package defines utilities for working with data.frame concepts in a more convenient, streamlined way
+- Bioconductor S4Vectors defines DataTable and DataFrame that are compatible with tibble concepts but are more general and accommodate genomically relevant requirements
+    - run-length encoding in a column
+    - DNAStringSet in a column
+    - many natural coercions for use with dplyr
+
+The key design principle is that the columns of DataFrame satisfy a simple
+API, specifically
+
+    - `length()`
+    - `[`, `[<-`
+
+# Illustration
+
+```{r getseq}
+library(BSgenome.Hsapiens.UCSC.hg19)
+library(GenomicRanges)
+# overlapping 8-mers
+myv = Views(Hsapiens$chr1, start=100601:100800, width=8)
+mytag = paste0("v", 1:200)
+mygrp = Rle( rep(c(1L,2L),each=100))
+dd = DataFrame(tag=mytag, grp=mygrp, octamers=myv)
+dd
+```
+
+# And so on
+
+```{r lkm}
+library(dplyr)
+as.data.frame(dd) %>% filter(grepl("TCAC", octamers ))
+library(DT)
+datatable(as.data.frame(dd))
+```

@@ -1,0 +1,843 @@
+---
+author:
+- 'Aleksandra P<span>e</span>kowska, Simon Anders'
+title: 'Basics of ChIP-seq data analysis'
+...
+
+# Introduction
+
+This vignette describes steps of a basic analysis of ChIP-seq data. To
+exemplify this tutorial, we use ChIP-seq data for the lysine 27
+acetylation of the histone H3 (i.e H3K27ac).
+
+## Objectives of this tutorial
+
+After completing this vignette, you will be able to:\
+1. Read a ChIP-seq experiment into *R*\
+2. Extend the reads and bin the data (details and relevance discussed
+later)\
+3. Generate .bedGraph files\
+4. Visualize ChIP-seq data with *R*\
+5. Perform basic analysis of ChIP-seq peaks\
+6. Generate average profiles and heatmaps of ChIP-seq enrichment around
+a set of annotated genomic loci\
+In the appendix part, we show how to download, preprocess and asses the
+quality of .fastq files.
+
+# Data
+
+H3K27ac is a histone modification associated with active promoters and
+enhancers. We downloaded data corresponding to a ChIP-seq experiment
+with two biological replicates of mouse Embryonic Stem cells (mESC)
+along with the input control sample *Histone H3K27ac separates active
+from poised enhancers and predicts developmental state* by Creyghton *et
+al*., PNAS 2010.
+
+## Preprocessing of data
+
+The first part of ChIP-seq analysis workflow consists in read
+preprocessing. We will not focus here on these first steps, we outline
+them and provide the code in the *Appendix* part of the vignette. The
+three major steps in the preprocessing are briefly outlined below.
+
+### Initial quality assessment
+
+Sequenced reads are saved in .fastq files. The very first step in the
+analyses of sequencing results consists in quality assessment. The *R*
+package *ShortRead* provides a *qa* to perform this analysis. The reader
+can find the code necessary to generate a *HTML* read quality control
+report in the *Appendix* part of the vignette.
+
+### External to *R* data opperations
+
+Initial parts of the analysis of sequenced reads include: alignment,
+filtering and peak finding. They can be performed using tools such as
+*Bowtie2*, *samtools* or *MACS*. We provide all the necessary code in
+the *Appendix* part of the vignette.
+
+### Additional considerations
+
+Two steps from this vignette (visualization and read distribution
+analysis) require *biomart* database querying via the internet. In order
+to avoid many downloads, we provide the necessary objects in the data
+package *EpigeneticsCSAMA*. The code for the generation of these objects
+can be found in the *Appendix* of the vignette.
+
+Additionally, in order to reduce memory requirements, we restrict our
+analysis to the filtered reads mapping to chromosome 6.
+
+## Data package
+
+The data files produced by the steps above are placed in the R objects
+of a data package called *EpigeneticsCSAMA*, which we load now. (Note
+that such a data package is used for convenience in this course, but
+typically, you would not package up interemediate data in this way.)
+
+```{r Dir, echo=TRUE, eval=TRUE}
+library(EpigeneticsCSAMA)
+dataDirectory =  system.file("bedfiles", package="EpigeneticsCSAMA")
+```
+
+The variable *dataDirectory* shows the directory containing the data
+objects necessary for this vignette.
+
+```{r DirShow}
+dataDirectory
+```
+
+In order to explore this files, have a look at them with a text editor
+or via a terminal emulator.
+
+# Reading the filtered ChIP-seq reads
+
+We need to load the *GenomicRanges*, *rtracklayer* and *IRanges*
+packages. To read the .bam file to *R*, we use the *import.bed* function
+from the *rtracklayer* package. The result is a *GRanges* object. This
+is an extremely useful and powerful class of objects which the readers
+are already familiar with. Each filtered read is represented here as a
+genomic interval.
+
+```{r RepresentReadsAsGRanges,eval=TRUE, results='hide'}
+
+library(GenomicRanges)
+library(rtracklayer)
+library(IRanges)
+
+input = import.bed(file.path(dataDirectory, 'ES_input_filtered_ucsc_chr6.bed'))
+rep1 = import.bed(file.path(dataDirectory, 'H3K27ac_rep1_filtered_ucsc_chr6.bed'))
+rep2 = import.bed(file.path(dataDirectory, 'H3K27ac_rep2_filtered_ucsc_chr6.bed'))
+
+```
+
+The objects *input*, *rep1* and *rep2* hold the genomic annotation of
+the filtered reads for the input sample and ChIP-seq replicate 1 and
+replicate 2, respectively. We display the *rep1* object. We see that the
+strand information, read name along with alignment score are included as
+information for each read.
+
+```{r dataStr}
+rep1
+```
+
+We see that we have roughly the same number of reads in the input and
+IP-ed experiments.
+
+```{r ReadNumber}
+length(input)
+length(rep1)
+length(rep2)
+```
+
+# Preparation of the ChIP-seq and control samples: read extension
+
+The reads correspond to sequences at the end of each IP-ed fragment
+(single-end sequencing data). We need to extend these reads in order to
+represent each IP-ed DNA fragment.
+
+We estimate the mean read length using the *estimate.mean.fraglen*
+function from *chipseq* packege. Next, we extend the reads to the
+inferred read length using the *resize* function. We remove any reads
+for which the coordinates, after the extension, exceed chromosome
+length. These three analysis steps are wrapped in a single function
+*prepareChIPseq* function which we define below.
+
+```{r ReadExtension_Definition, results='hide'}
+library(chipseq)
+
+prepareChIPseq = function(reads){
+    frag.len = median( estimate.mean.fraglen(reads) )
+    cat( paste0( 'Median fragment size for this library is ', round(frag.len)))
+    reads.extended = resize(reads, width = frag.len)
+    return( trim(reads.extended) )
+}
+```
+
+We next apply it to the input and ChIP-seq samples.
+
+```{r ReadExtension,eval=TRUE}
+input = prepareChIPseq( input )
+rep1 = prepareChIPseq( rep1 )
+rep2 = prepareChIPseq( rep2 )
+```
+
+Compare with above to see how *rep1* has changed.
+
+```{r Rep1Inspect}
+rep1
+```
+
+# Binning the ChIP-seq and control
+
+The next step in the analysis is to count how many reads map to each of
+the pre-established genomic intervals (bins).
+
+## Generation of bins
+
+We will tile the genome into non-overlapping bins of size 200 bp. To
+this end we need the information about chromosome sizes in the mouse
+genome (assembly *mm9*). In the data package, we provide the object *si*
+(strand information), which holds these data. The reader can find the
+code necessary to create the *si* object in the *Obtaining *si* object
+for *mm9** of the *Appendix*.
+
+```{r GetBins_preps}
+data(si)
+si
+```
+
+Next, we use the *tileGenome* function from the *GenomicRanges* package
+to generate a *GRanges* object with intervals covering the genome in
+tiles (bins) of size of 200 bp.
+
+```{r GetBins,eval=TRUE}
+binsize = 200
+bins = tileGenome(si['chr6'], tilewidth=binsize,
+                  cut.last.tile.in.chrom=TRUE)
+bins
+```
+
+## Binning
+
+We now count how many reads fall into each bin. For this purpose, we
+define the function *BinChIPseq*. It takes two arguments, *reads* and
+*bins* which are *GRanges* objects.
+
+```{r Binning_function,eval=TRUE}
+BinChIPseq = function( reads, bins ){
+
+       mcols(bins)$score = countOverlaps( bins, reads ) 
+       return( bins ) 
+}
+```
+
+Now we apply it to the objects *input*, *rep1* and *rep2*. We obtain
+*input.200bins*, *rep1.200bins* and *rep2.200bins*, which are *GRanges*
+objects that contain the binned read coverage of the input and ChIP-seq
+experiments.
+
+```{r Binning, eval=TRUE}
+input.200bins = BinChIPseq( input, bins )
+rep1.200bins = BinChIPseq( rep1, bins )
+rep2.200bins = BinChIPseq( rep2, bins )
+
+rep1.200bins
+```
+
+We can plot coverage for 1000 bins, starting from bin 200,000.
+
+```{r simplePlot,fig.width=7, fig.height=7, out.width='.65\\linewidth', fig.align='center'}
+plot( 200000:201000, rep1.200bins$score[200000:201000], 
+   xlab="chr6", ylab="counts per bin" )
+```
+
+Below, we will see more sophisticated ways of plotting coverage.
+
+## Exporting binned data
+
+At this step of the analysis, the data is ready to be visualized and
+shared. One of the most common means of sharing ChIP-seq data is to
+generate .wig, .binWig or .bedGraph files. They are memory and
+size-efficient files holding the information about the signal along the
+genome. Moreover, these files can be visualized in genome browsers such
+as IGV and IGB. We show how to export the binned data as a .bedGraph
+file.
+
+```{r ExportbedGraphFiles}
+export(input.200bins, 
+       con='input_chr6.bedGraph',
+       format = "bedGraph")
+export(rep1.200bins, 
+       con='H3K27ac_rep1_chr6.bedGraph',
+       format = "bedGraph")
+export(rep2.200bins, 
+       con='H3K27ac_rep2_chr6.bedGraph',
+       format = "bedGraph")
+```
+
+In the next section, we see how to visualize bedGraph files using *R*.
+
+# Visualisation of ChIP-seq data wit *Gviz*
+
+Now, we have data which we would like to display along the genome. *R*
+offers a flexible infrastructure for visualisation of many types of
+genomics data. Here, we use the *Gviz* package for these purposes.
+
+```{r Visualisation_Prep_libs, results='hide'}
+library(Gviz)
+```
+
+The principle of working with *Gviz* relies on the generation of tracks
+which can be, for example ChIP-seq signal along the genome, ChIP-seq
+peaks, gene models or any kind of other data such as annotation of CpG
+islands in the genome. We start with loading the gene models for
+chromosome 6 starting at position 122,530,000 and ending at position
+122,900,000. We focus on this region as it harbors the *Nanog* gene,
+which is stongly expressed in ES cells.
+
+We obtain the annotation using *biomaRt* package. Work with *biomaRt*
+package relies on querying the *biomart* database. In the *Appendix*, we
+show how to obtain gene models for protein coding genes for the archive
+mouse genome assembly (mm9) and how to generate the *bm* object holding
+the annotation of all the RefSeq genes.
+
+```{r BM}
+data(bm)
+bm
+```
+
+We include the *GenomeAxisTrack* object which is a coordinate axis
+showing the genomic span of the analyzed region.
+
+```{r AT}
+AT = GenomeAxisTrack( )
+```
+
+We plot the result using the *plotTracks* function. We choose the region
+to zoom into with the *from* and *to* arguments. The
+*transcriptAnnotation* argument allows to put the gene symbols in the
+plot.
+
+```{r Visualisation_Gviz, fig.width=5, fig.height=3, out.width='.95\\linewidth', fig.align='center'}
+plotTracks(c( bm, AT),
+           from=122530000, to=122900000,
+           transcriptAnnotation="symbol", window="auto", 
+           cex.title=1, fontsize=10 )
+```
+
+We next add our two data tracks to the plot. We first generate
+*DataTrack* objects with *DataTrack* function. We include the
+information about how the track is be labaled and colored. We obtain
+*input.track*, *rep1.track* and *rep2.track* objects.
+
+```{r dataTrackGet}
+input.track = DataTrack(input.200bins, 
+                        strand="*", genome="mm9", col.histogram='gray',
+                        fill.histogram='black', name="Input", col.axis="black",
+                        cex.axis=0.4, ylim=c(0,150))
+
+rep1.track = DataTrack(rep1.200bins, 
+                        strand="*", genome="mm9", col.histogram='steelblue',
+                        fill.histogram='black', name="Rep. 1", col.axis='steelblue',
+                        cex.axis=0.4, ylim=c(0,150))
+
+rep2.track = DataTrack(rep2.200bins, 
+                        strand="*", genome="mm9", col.histogram='steelblue',
+                        fill.histogram='black', name="Rep. 2", col.axis='steelblue',
+                        cex.axis=0.4, ylim=c(0,150))
+```
+
+Finally, we plot these tracks along with the genomic features. We
+observe a uniform coverage in the case of the input track and pronounced
+peaks of enrichment H3K27ac in promoter and intergenic regions.
+Importantly, H3K27ac enriched regions are easily identified.
+
+```{r dataTrackPlot, fig.width=5, fig.height=4, out.width='.95\\linewidth', fig.align='center'}
+plotTracks(c(input.track, rep1.track, rep2.track, bm, AT),
+           from=122530000, to=122900000,
+           transcriptAnnotation="symbol", window="auto", 
+           type="histogram", cex.title=0.7, fontsize=10 )
+```
+
+# ChIP-seq peaks
+
+ChIP-seq experiments are designed to isolate regions enriched in a
+factor of interest. The identification of enriched regions, often
+refered to as peak finding, is an area of research by itself. There are
+many algorithms and tools used for peak finding. The choice of a method
+is strongly motivated by the kind of factor analyzed. For instance,
+transcription factor ChIP-seq yield well defined narrow peaks whereas
+histone modifications ChIP-seq experiments such as H3K36me3 yield
+extended regions of high coverage. Finally, ChIP-seq with antobodies
+recognizing polymerase II result in narrow peaks combined with extended
+regions of enrichment.
+
+## Identification of peaks
+
+As we saw in the previous section of the tutorial, H3K27ac mark shows
+well defined peaks. In such a case, *MACS* is one of the most commonly
+used software for peak finding. ChIP-seq peak calling can also be done
+in *R* with the *BayesPeak* package. However, we stick here to the most
+common approach and use *MACS*. We ran *MACS* for you and provide the
+result in the data package. You can find the code necessary to obtain
+the peaks in the *Appendix* of the vignette.
+
+## Peaks – basic analysis in *R*
+
+We next import the .bed files of the isolated peaks from the data
+package.
+
+```{r MACSreadingtoR}
+peaks.rep1 = import.bed(file.path(dataDirectory,'Rep1_peaks_ucsc_chr6.bed'))
+peaks.rep2 = import.bed(file.path(dataDirectory,'Rep2_peaks_ucsc_chr6.bed'))
+```
+
+First step in the analysis of the identified peaks is to simply display
+them in the browser, along with the ChIP-seq and input tracks. To this
+end, we use *AnnotationTrack* function. We display peaks as boxes
+colored in blue.
+
+```{r PeaksInBrowser_preps}
+peaks1.track = AnnotationTrack(peaks.rep1, 
+                               genome="mm9", name='Peaks Rep. 1',
+                               chromosome='chr6',
+                               shape='box',fill='blue3',size=2)
+peaks2.track = AnnotationTrack(peaks.rep2, 
+                               genome="mm9", name='Peaks Rep. 2',
+                               chromosome='chr6',
+                               shape='box',fill='blue3',size=2)
+```
+
+We visualise the *Nanog* locus.
+
+```{r PeaksInBrowserPlot_nanog, fig.width=5, fig.height=4, out.width='.95\\linewidth', fig.align='center'}
+plotTracks(c(input.track, rep1.track, peaks1.track,
+             rep2.track, peaks2.track, bm, AT),
+           from=122630000, to=122700000,
+           transcriptAnnotation="symbol", window="auto", 
+           type="histogram", cex.title=0.7, fontsize=10 )
+```
+
+We can see that *MACS* has succesfully identified regions showing high
+H3K27ac signal. We see that both biological replicates agree well,
+however, in some cases peaks are called only in one sample. In the next
+section, we will analyse how often do we see the overlap between peaks
+and isolate reproducible peaks.
+
+## Venn diagrams
+
+We first find the overlap between the peak sets of the two replicates.
+
+```{r findOverlap}
+ovlp = findOverlaps( peaks.rep1, peaks.rep2 )
+ovlp
+```
+
+If a peak in one replicate overlaps with mutiple peaks in the other
+replicate, it will appear multiple times in *ovlp*. To see, how many
+peaks overlap with something in the other replicate, we count the number
+of unique peaks in each of the two columns of *ovlp* and take the
+smaller of these two counts to as the number of common peaks.
+
+```{r nbrCommonPeaks}
+ov = min( length(unique( queryHits(ovlp) )), length(unique( subjectHits(ovlp) ) ) )
+```
+
+We draw this as a Venn diagram, using the *draw.pairwise.venn* function
+from the *VennDiagram* package.
+
+```{r VennDiagram1, fig.width=4, fig.height=4, out.width='.75\\linewidth', fig.align='center'}
+library(VennDiagram)
+
+draw.pairwise.venn( 
+   area1=length(peaks.rep1),
+   area2=length(peaks.rep2), 
+   cross.area=ov, 
+   category=c("rep1", "rep2"), 
+   fill=c("steelblue", "blue3"), 
+   cat.cex=0.7)
+```
+
+We will focus only on peaks identified in both replicates (hereafter
+refered to as enriched areas). The enriched areas are colored in green.
+
+```{r EnrichedRegionsIsolation, fig.width=5, fig.height=5, out.width='.95\\linewidth', fig.align='center'}
+enriched.regions = Reduce(subsetByOverlaps, list(peaks.rep1, peaks.rep2))
+
+enr.reg.track = AnnotationTrack(enriched.regions,
+                                genome="mm9", name='Enriched regions',
+                                chromosome='chr6',
+                                shape='box',fill='green3',size=2)
+
+plotTracks(c(input.track, rep1.track, peaks1.track,
+             rep2.track, peaks2.track, enr.reg.track, 
+             bm, AT),
+           from=122630000, to=122700000,
+           transcriptAnnotation="symbol", window="auto", 
+           type="histogram", cex.title=0.5, fontsize=10 )
+
+```
+
+## Isolation of promoters overlapping H3K27ac peaks
+
+One of the questions of a ChIP seq analyses is to which extend
+ChIP-enriched regions overlap a chosen type of features, such as
+promoters or regions enriched with other modifications. To this end, the
+overlap between peaks of ChIP-seq signal and the features of interest is
+analysed.
+
+We exemplify such an analysis by testing how many of the H3K27ac
+enriched regions overlap promoter regions.
+
+### Identification of promoters
+
+As shown in the Appendix, we have used *biomaRt* to get coordinates for
+start and end of all mouse genes. (These are the coordinates of the
+outermost UTR boundaries.) We load the results of the *biomaRt* query
+from the data package. It is given in the object *egs*, a *data.frame*
+containing *ensembl* ID along with gene symbols, genomic coordinates and
+orientation of of mouse genes.
+
+```{r TSS}
+data(egs)
+head(egs)
+```
+
+We next identify the transcription start site (TSS), taking into account
+gene orientation.
+
+```{r TSSfinding}
+egs$TSS = ifelse( egs$strand == "1", egs$start_position, egs$end_position )
+head(egs)
+```
+
+We consider regions of $\pm 200$ bp around the TSS as promoters.
+
+```{r Promoter}
+promoter_regions = 
+  GRanges(seqnames = Rle( paste0('chr', egs$chromosome_name) ),
+          ranges = IRanges( start = egs$TSS - 200,
+                            end = egs$TSS + 200 ),
+          strand = Rle( rep("*", nrow(egs)) ),
+          gene = egs$external_gene_id)
+promoter_regions
+```
+
+### Overlapping promoters with H3K27ac enriched regions
+
+Now we would like to know how many of out the promoters overlap with a
+H3K27ac enriched regions.
+
+```{r}
+ovlp2 = findOverlaps( enriched.regions, promoter_regions )
+
+cat(sprintf( "%d of %d promoters are overlapped by an enriched region.",
+   length( unique(subjectHits(ovlp2)) ), length( promoter_regions ) ) )
+```
+
+We can also turn the question around:
+
+```{r}
+ovlp2b = findOverlaps( promoter_regions, enriched.regions )
+
+cat(sprintf( "%d of %d enriched regions overlap a promoter.",
+   length( unique( subjectHits(ovlp2b) ) ), length( enriched.regions ) ) )
+```
+
+Is this a significant enrichment? To see, we first calculate how much
+chromosome 6 is part of a promoter region. The following command reduces
+the promoter list to non-overlapping intervals and sums up their widths
+
+```{r}
+promotor_total_length = sum(width(reduce(promoter_regions)))
+promotor_total_length
+```
+
+Which fraction of the chromsome is this?
+
+```{r}
+promotor_fraction_of_chromosome_6 = promotor_total_length / seqlengths(si)["chr6"]
+```
+
+Nearly a quarter of promoters are overlapped by H3K27ac-enriched regions
+even though they make up only half a percent of the chromosome. Clearly,
+this is a strong enrichment. A binomial test confirms this:
+
+```{r}
+binom.test( length( unique( subjectHits( ovlp2b ) ) ), length( enriched.regions ), promotor_fraction_of_chromosome_6 )
+```
+
+Which promotors are overlapped with an H3K27ac peak? Let’s see some
+examples:
+
+```{r promoterRegionTiling,eval=TRUE}
+pos.TSS = egs[ unique( queryHits( findOverlaps( promoter_regions, enriched.regions ) ) ),]
+pos.TSS[1:3,]
+```
+
+The first three promoters identified as overlapping a H3K27ac peak
+include: *Brpf1*, *Ogg1* and *Camk1 loci*.
+
+## Analysis of the distribution of H3K27ac around a subset of gene promoters
+
+In this part of the analysis, we show how to generate plots displaying
+the distribution of ChIP-seq signal around certain genomic positions,
+here a set of promoter regions. These include a heatmap representation
+and an average profile for H3K27ac signal at promoters overlapping a
+peak of H3K27ac identified by *MACS*. These are one of the most
+frequently performed analysis steps in ChIP-seq experiments.
+
+In the previous section, we have identified promoters overlaping a
+H3K27ac peak (the *pos.TSS* object). In order to get a comprehensive
+view of the distribution of H3K27ac around the corresponding TSS, we
+extend the analysed region to $\pm 1000$ bp around the TSS. We divide
+each of these 2000 bp regions into 20 bins of 100 bp length each and
+order the bins with increasing position for genes on the ’+’ strand and
+decreasing for genes on the ’-’ strand.
+
+Next, we tile the promoter regions with consecutive 100bp tiles. For
+each region, we order the tiles according to the gene orientation. We
+create 20 tiles per promoter region.
+
+```{r Tiles}
+tiles = sapply( 1:nrow(pos.TSS), function(i)
+   if( pos.TSS$strand[i] == "1" )
+      pos.TSS$TSS[i] + seq( -1000, 900, length.out=20 )
+   else
+      pos.TSS$TSS[i] + seq( 900, -1000, length.out=20 ) )
+
+tiles = GRanges(tilename = paste( rep( pos.TSS$ensembl_gene_id, each=20), 1:20, sep="_" ),
+                seqnames = Rle( rep(paste0('chr', pos.TSS$chromosome_name), each=20) ), 
+                ranges = IRanges(start = as.vector(tiles),
+                                 width = 100),
+                strand = Rle(rep("*", length(as.vector(tiles)))),
+                seqinfo=si)
+
+tiles                
+```
+
+Next, we count how many reads are mapping to each tile. The resulting
+vector *H3K27ac.p* is next used to create a matrix (*H3K27ac.p.matrix*),
+where each row is a H3K27ac-enriched promoter. Each column coresponds to
+a consecutive 100bp tile of 2000 bp region around the TSS overlapping a
+H3K27ac peak. Since we have divided each promoter region in 21 tiles, we
+obtain a matrix with 21 columns and 634 rows (the number of promoters
+overlapping H3K27ac peak).
+
+```{r AverProf_I,eval=TRUE}
+H3K27ac.p = countOverlaps( tiles, rep1) +
+  countOverlaps( tiles, rep2 )
+
+H3K27ac.p.matrix = matrix( H3K27ac.p, nrow=nrow(pos.TSS), 
+                           ncol=20, byrow=TRUE )
+```
+
+Finally, we plot the result as a heatmap and as a plot of average values
+per each tile for all the included promoters.
+
+```{r Aver_plot, fig.width=8, fig.height=10, out.width='.70\\linewidth', fig.align='center', dev.args = list(pointsize=11)}
+colors = colorRampPalette(c('white','red','gray','black'))(100) 
+
+layout(mat=matrix(c(1,2,0,3), 2, 2), 
+       widths=c(2,2,2), 
+       heights=c(0.5,5,0.5,5), TRUE)
+
+
+par(mar=c(4,4,1.5,1))
+image(seq(0, max(H3K27ac.p.matrix), length.out=100), 1,
+      matrix(seq(0, max(H3K27ac.p.matrix), length.out=100),100,1),
+      col = colors,
+      xlab='Distance from TSS', ylab='',
+      main='Number of reads', yaxt='n',
+      lwd=3, axes=TRUE)
+box(col='black', lwd=2)
+image(x=seq(-1000, 1000, length.out=20),
+      y=1:nrow(H3K27ac.p.matrix),
+      z=t(H3K27ac.p.matrix[order(rowSums(H3K27ac.p.matrix)),]), 
+      col=colors,
+      xlab='Distance from TSS (bp)',
+      ylab='Promoters', lwd=2)
+box(col='black', lwd=2)
+abline(v=0, lwd=1, col='gray')
+plot(x=seq(-1000, 1000, length.out=20),
+     y=colMeans(H3K27ac.p.matrix),
+     ty='b', pch=19,
+     col='red4',lwd=2,
+     ylab='Mean tag count',
+     xlab='Distance from TSS (bp)')
+abline(h=seq(1,100,by=5),
+       v=seq(-1000, 1000, length.out=20),
+       lwd=0.25, col='gray')
+box(col='black', lwd=2)
+
+```
+
+We observe a strong enrichment of H3K27ac modification right after the
+TSS and a weaker peak of H3K27ac at the region immediately upstream of
+the TSS.
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
+# Appendix
+
+## Obtaining data from European Nucleotide Archive
+
+The European Nucleotide Archive (http://www.ebi.ac.uk/ena) provides many
+types of raw sequencing data, sequence assembly information and
+functional annotation. We download the data corresponding to ChIP-seq
+experiment mapping the H3K27ac histone modification in mouse Embryonic
+Stem cells (mES cells) along with the input control sample from the
+study *Histone H3K27ac separates active from poised enhancers and
+predicts developmental state* by Creyghton *et al*.
+
+```{r DataDownload, echo=TRUE,eval=FALSE}
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR066/SRR066787/SRR066787.fastq.gz .
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR066/SRR066766/SRR066766.fastq.gz .
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR066/SRR066767/SRR066767.fastq.gz .
+```
+
+## Read quality
+
+Read quality is the first step in all the analyses of sequenced reads.
+The package *ShortRead* provides a function taking as input the .fastq
+files downloaded from the ENA database. We first generate a vector with
+fastq file names.
+
+```{r ReadQuality_preps, echo=TRUE,eval=FALSE}
+fls = list.files(dataDirectory, ".fastq$", full=TRUE)
+names(fls) = sub(".fastq", "", basename(fls))
+```
+
+We read each of these files and apply the *qas* function assessing the
+quality of the reads in each file. Finally, we generate a *HTML* quality
+report.
+
+```{r QA, echo=TRUE,eval=FALSE}
+library(ShortRead)
+qas = lapply(seq_along(fls),
+              function(i, fls) qa(readFastq(fls[i]), names(fls)[i]),
+              fls)
+qa = do.call(rbind, qas)
+rpt = report(qa,dest = 'QA_report.html')
+```
+
+## External file preparations
+
+The next step is to align the reads to mm9 mouse genome assembly. This
+is done using *Bowtie2* tool. The resulting .sam files are next
+transformed to .bam files and filtered for best aligned reads using
+*samtools*. PCR duplicates are removed. BAM files are next transfomed to
+bed files. For the sake of consistency with other tools, in the final
+step of data preprocessing we add a ’chr’ prefix to the chromosome names
+using *awk*.
+
+```{r ReadProcessing, echo=TRUE, eval=FALSE}
+gunzip SRR066787.fastq.gz
+gunzip SRR066766.fastq.gz 
+gunzip SRR066767.fastq.gz 
+```
+
+## Alignment
+
+```{r Alignment, echo=TRUE, eval=FALSE}
+bowtie2 -p 8 -q NCBIM37.67 SRR066787.fastq -S ES_input.sam
+bowtie2 -p 8 -q NCBIM37.67 SRR066766.fastq -S H3K27ac_rep1.sam
+bowtie2 -p 8 -q NCBIM37.67 SRR066767.fastq -S H3K27ac_rep2.sam
+```
+
+## Retaining only best alignments
+
+```{r BestQualityRead, echo=TRUE, eval=FALSE}
+samtools view -bS -q 40 ES_input.sam > ES_input_bestAlignment.bam
+samtools view -bS -q 40 H3K27ac_rep1.sam > H3K27ac_rep1_bestAlignment.bam
+samtools view -bS -q 40 H3K27ac_rep2.sam > H3K27ac_rep2_bestAlignment.bam
+```
+
+## PCR duplicate removal
+
+```{r PCRDuplRemoval, echo=TRUE, eval=FALSE}
+samtools rmdup -s  ES_input_bestAlignment.bam ES_input_filtered.bam
+samtools rmdup -s  H3K27ac_rep1_bestAlignment.bam H3K27ac_rep1_filtered.bam
+samtools rmdup -s  H3K27ac_rep2_bestAlignment.bam H3K27ac_rep2_filtered.bam
+```
+
+## Transforming reads to .bed format
+
+```{r BAMTOBED, echo=TRUE, eval=FALSE}
+bedtools bamtobed -i ES_input_filtered.bam > ES_input_filtered.bed
+bedtools bamtobed -i H3K27ac_rep1_filtered.bam > H3K27ac_rep1_filtered.bed
+bedtools bamtobed -i H3K27ac_rep2_filtered.bam > H3K27ac_rep2_filtered.bed
+```
+
+## Additional preparations
+
+```{r Prefixes, echo=TRUE, eval=FALSE}
+awk '$0="chr"$0' ES_input_filtered.bed > ES_input_filtered_ucsc.bed
+awk '$0="chr"$0' H3K27ac_rep1_filtered.bed > H3K27ac_rep1_filtered_ucsc.bed
+awk '$0="chr"$0' H3K27ac_rep2_filtered.bed > H3K27ac_rep2_filtered_ucsc.bed
+```
+
+Finally, for the purpose of this lab, we isolate data for only one
+chromosome (chr6).
+
+```{r bedSubsetting, echo=TRUE, eval=FALSE}
+awk '{if($1=="chr6") print $0}' ES_input_filtered_ucsc.bed 
+> ES_input_filtered_ucsc_chr6.bed
+awk '{if($1=="chr6") print $0}' H3K27ac_rep1_filtered_ucsc.bed 
+> H3K27ac_rep1_filtered_ucsc_chr6.bed
+awk '{if($1=="chr6") print $0}' H3K27ac_rep2_filtered_ucsc.bed  
+> H3K27ac_rep2_filtered_ucsc_chr6.bed
+```
+
+### Obtaining object *si* for *mm9*
+
+We obtain chromosome lengths from the *BSgenome.Mmusculus.UCSC.mm9*
+package. The chromosome names in the *si* file are in the *ensembl*
+format, we add a prefix ’chr’ to chromosome names.
+
+```{r Getmm9SequenceInfo, echo=TRUE,eval=FALSE}
+library(BSgenome.Mmusculus.UCSC.mm9)
+genome = BSgenome.Mmusculus.UCSC.mm9
+si = seqinfo(genome)
+si = si[ paste0('chr', c(1:19, 'X', 'Y'))]
+```
+
+### Obtaining object *bm* for *mm9*
+
+```{r Visualisation_Prep_mart, eval=FALSE}
+library(biomaRt)
+mart = useMart(biomart = "ENSEMBL_MART_ENSEMBL", 
+               dataset = "mmusculus_gene_ensembl", 
+               host="may2012.archive.ensembl.org")
+fm = Gviz:::.getBMFeatureMap()
+fm["symbol"] = "external_gene_id"
+```
+
+Next, we get a snapshot of the results for chromosome 6 starting at
+position 122530000 and ending at position 122900000. This region amongst
+others encodes a highly ES cell specific *Nanog* gene. We first isolate
+gene models for this interval. The result *bm* is saved in the data
+directory.
+
+```{r Visualisation_Prep_region,eval=FALSE}
+bm = BiomartGeneRegionTrack(chromosome='chr6', genome="mm9", 
+                             start=122530000, end = 122900000, 
+                             biomart=mart,filter=list("with_ox_refseq_mrna"=TRUE), 
+                             size=4, name="RefSeq", utr5="red3", utr3="red3", 
+                             protein_coding="black", col.line=NULL, cex=7,
+                             collapseTranscripts="longest",
+                             featureMap=fm)
+```
+
+### Peak finding with *MACS*
+
+```{r macs,eval=FALSE}
+macs14 -t H3K27ac_rep1_filtered.bed -c ES_input_filtered_ucsc.bed -f BED -g mm --nomodel -n Rep1
+macs14 -t H3K27ac_rep2_filtered.bed -c ES_input_filtered_ucsc.bed -f BED -g mm --nomodel -n Rep2
+awk '$0="chr"$0' Rep1_peaks.bed > Rep1_peaks_ucsc.bed
+awk '$0="chr"$0' Rep2_peaks.bed > Rep2_peaks_ucsc.bed
+awk '{if($1=="chr6") print $0}' Rep1_peaks_ucsc.bed > Rep1_peaks_ucsc_chr6.bed
+awk '{if($1=="chr6") print $0}' Rep2_peaks_ucsc.bed > Rep2_peaks_ucsc_chr6.bed
+```
+
+### Promoter isolation
+
+Here we provide the code necessary to isolate gene models from the
+*biomart* data base. The object *egs* contains the annotation of the
+most external 5 and 3 prime UTRs for each gene model.
+
+```{r usingMartToFindFeaturesOfInterest,eval=FALSE}
+listAttributes(mart)[1:3,]
+ds = useDataset('mmusculus_gene_ensembl', mart=mart)
+chroms = 6
+
+egs = getBM(attributes = c('ensembl_gene_id','external_gene_id',
+                           'chromosome_name','start_position',
+                           'end_position','strand'), 
+            filters='chromosome_name',
+            values=chroms,
+            mart=ds)
+```

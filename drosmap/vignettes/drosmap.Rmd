@@ -1,0 +1,134 @@
+---
+title: "drosmap: multivariate methods with cell-fate map of D. melanogaster"
+author: "Vincent J. Carey, stvjc at channing.harvard.edu"
+date: "July 2016"
+output:
+  ioslides_presentation:
+    incremental: true
+    fig_height: 4
+---
+
+<!--
+output:
+  pdf_document:
+    toc: yes
+    number_sections: yes
+  html_document:
+    highlight: pygments
+    number_sections: yes
+    theme: united
+    toc: yes
+---
+-->
+
+<!--
+%\VignetteEngine{knitr::rmarkdown}
+%\VignetteIndexEntry{drosmap overview}
+-->
+
+```{r bib, echo = FALSE, results = 'hide'}
+library(knitcitations)
+library(bibtex)
+allbib = read.bibtex("sigiwu.bib")
+```
+
+## Introduction
+
+The recent PNAS paper of Wu and
+colleagues 
+(`r citet(allbib[["Wu2016"]])`)
+demonstrates the use of
+cluster analysis of spatially organized
+data to identify gene expression signatures
+for regions of the cell-fate map of *D. melanogaster*.
+We have repackaged some of their data and code
+to demonstrate the key ideas.
+
+## Views of the cell-fate map
+
+For developmental stages 4-6 of *Drosophila* (1.3-2h
+after egg deposit at 25C) a classic cell-fate map
+has been published (`r citet(allbib[["Hartenstein1985"]])`).
+
+```{r lkd,fig=TRUE,echo=FALSE,fig.height=6}
+library(png)
+library(grid)
+im = readPNG("map1.png")
+grid.raster(im)
+```
+
+## Berkeley Drosophila Genome Project expression data
+
+The image for "opa" in developmental stages 4-5 (1.3-3.0h after egg deposit)
+
+```{r lkd2,fig=TRUE,echo=FALSE,fig.height=6}
+im = readPNG("bdgpOPA.png")
+grid.raster(im)
+```
+
+## Setup for digitized expression patterns published by Wu et al. PNAS 2016
+
+```{r doset}
+library(drosmap)
+data(expressionPatterns)
+data(uniqueGenes)
+dim(expressionPatterns[,uniqueGenes])
+data(template)
+dim(template)
+args(imageBatchDisplay)
+```
+
+## Wu et al. reregistered, normalized colormap for opa
+
+```{r mo,fig=TRUE}
+imageBatchDisplay(expressionPatterns[, "opa", drop=FALSE], 
+  nrow=1, ncol=1, template=template[,-1])
+```
+
+## Wu et al. reregistered, normalized colormaps for 25 genes (of 701 with 'spatially restricted expression')
+
+```{r mo2,echo=FALSE,fig=TRUE}
+imageBatchDisplay(expressionPatterns[, uniqueGenes[1:25]],
+  nrow=5, ncol=5, template=template[,-1])
+```
+
+## The NMF analysis of the 405 x 701 expression matrix
+
+The expression patterns in the matrix $X$
+with rows corresponding to positions in the
+blastocyst ellipse and column corresponding to genes
+are re-expressed via $X \approx DA$, where all
+entries in $D$ and $A$ are nonnegative.
+Matrix $D$ is referred to as basis, and
+matrix $A$ holds 'mixture coefficients'.
+We'll accept the statement that a rank 21 basis
+is adequate.
+
+```{r donmf, cache=TRUE}
+library(NMF)
+uex = expressionPatterns[,uniqueGenes]
+mm = nmf(data.matrix(uex), rank=21)
+mm
+```
+
+The rows of the basis matrix can be clustered
+to exhibit its structure.
+
+```{r lkba,fig=TRUE}
+basismap(mm)
+```
+
+These can be projected back into the blastocyst image space.
+The 21 principal patterns are then
+```{r lkpp,fig=TRUE}
+imageBatchDisplay(basis(mm), nrow=5, ncol=5, template=template[,-1])
+```
+
+
+
+## References
+
+```{r results='asis',echo=FALSE}
+bibliography() #style="markdown")
+```
+

@@ -1,0 +1,247 @@
+---
+title: "Benchmarking out-of-memory strategies"
+author: "Vincent Carey"
+date: "Friday July 15 2016"
+vignette: >
+  %\VignetteIndexEntry{Out-of-memory strategies}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  BiocStyle::html_document
+---
+
+```{r echo=FALSE,results="hide"}
+library(BiocStyle)
+```
+
+# Introduction
+
+It is sometimes impossible to allocate large quantities
+of memory to do certain tasks in an R session:
+
+* not enough RAM to represent a large object
+    - can be a serious issue in HPC strategies with many CPUs with small endowment
+
+* competing with other processes
+    - can be a serious issue with multicore usage
+
+Furthermore, it is often unnecessary to have random access to
+all elements of a large object
+
+* requirements can be satisfied by scalable traversal (you choose chunk size,
+sequential vs. parallel, etc.)
+
+R has a reputation of being greedy with memory resources.  Many
+packages have been devised to alleviate this concern:
+
+* `r CRANpkg("ff")`
+* `r CRANpkg("bigmemory")`
+
+There has been some effort to adapt
+modeling algorithms to work naturally with these out-of-memory
+representations:
+
+* `r CRANpkg("ffbase")`
+* `r CRANpkg("biglm")`
+
+Here's a schematic that describes the advantages of an approach
+like ff:
+
+```{r inc,echo=FALSE,fig=TRUE}
+library(png)
+library(grid)
+im = readPNG("ffSchema.png")
+grid.raster(im)
+```
+
+We can also use general-purpose external stores for which
+custom interface packages exist:
+
+* `r Biocpkg("rhdf5")`
+* `r CRANpkg("RSQLite")`
+
+Finally, there is often interest in the `r CRANpkg("data.table")`
+infrastructure for handling large tables.
+
+The purpose of this document is to discuss how to develop data
+on performance of these strategies to help decisionmaking:
+
+* When should we adopt out-of-memory strategy?
+* Which should we choose?
+* How do we tune our procedures to perform best with the selected strategy?
+
+# A benchmarking function
+
+```{r basiccode,echo=FALSE,results="hide"}
+#
+# this is rapidly improvised code for benchmarking out-of-memory
+# strategies, will write in current folder without checking
+# for clobbering
+#
+suppressPackageStartupMessages({
+library(rhdf5)
+library(microbenchmark)
+library(RSQLite)
+library(ff)
+library(bigmemory)
+})
+
+umicrobenchmark = function(...) microbenchmark(..., unit="us")
+
+.h5RoundTrip = function(x, chunkIn=c(1000,10), inLevel=0, intimes=1) {
+#system("rm -rf ex_hdf5file.h5")
+if (file.exists("ex_hdf5file.h5")) file.remove("ex_hdf5file.h5")
+require(rhdf5)
+h5createFile("ex_hdf5file.h5")
+h5createDataset("ex_hdf5file.h5", "x", c(nrow(x),ncol(x)), 
+   storage.mode = "double", chunk=chunkIn, level=inLevel)
+mw = umicrobenchmark(h5write(x, "ex_hdf5file.h5", name="x"), times=intimes)
+mr= umicrobenchmark(h5read("ex_hdf5file.h5", name="x"), times=intimes)
+msel= umicrobenchmark(ysel <- h5read("ex_hdf5file.h5", name="x", index=list(4001:5000, 1:100)), times=intimes)
+stopifnot(all.equal(ysel, x[4001:5000,]))
+list(mwrite=mw, ingFull=mr, ing1K=msel, times=intimes, method="hdf5")
+}
+
+.ffRoundTrip = function(x, chunkIn=c(5000,10), inLevel=0, intimes=1) {
+#system("rm -rf ex_ff.ff")
+if (file.exists("ex_ff.ff")) file.remove("ex_ff.ff")
+require(ff)
+dx = dim(x)
+mw = umicrobenchmark({
+  xff <- ff(vmode="double", dim=dx, filename="ex_ff.ff")
+  xff[,] = x
+  }, times=intimes)
+mr= umicrobenchmark({
+  suppressWarnings({
+   yff <- as.ram(xff)
+                  })}, times=intimes)
+msel= umicrobenchmark({
+  suppressWarnings({
+   yff <- xff[4001:5000,]
+                  })}, times=intimes)
+stopifnot(all.equal(yff, x[4001:5000,]))
+rm(yff)
+delete(xff)
+rm(xff)
+list(mwrite=mw, ingFull=mr, ing1K=msel, times=intimes, method="ff")
+}
+
+.bmRoundTrip = function(x, intimes=1) {
+#system("rm -rf ex_bm.bm ex_bm.desc")
+if (file.exists("ex_bm.bm")) file.remove("ex_bm.bm")
+if (file.exists("ex_bm.bm.desc")) file.remove("ex_bm.bm.desc")
+require(bigmemory)
+dx = dim(x)
+mw = umicrobenchmark({
+  xbm = big.matrix(dx[1], dx[2], init=NA, backingfile="ex_bm.bm",
+   descriptorfile="ex_bm.bm.desc")
+  xbm[,] = x
+  }, times=intimes)
+mr = umicrobenchmark(xin <- xbm[,], times=intimes)
+msel = umicrobenchmark({xin2 <- xbm[4001:5000,]}, times=intimes)
+stopifnot(all.equal(xin2, x[4001:5000,]))
+rm(xbm)
+gc()
+if (file.exists("ex_bm.bm")) file.remove("ex_bm.bm")
+if (file.exists("ex_bm.bm.desc")) file.remove("ex_bm.bm.desc")
+list(mwrite=mw, ingFull=mr, ing1K=msel, times=intimes, method="bigmemory")
+}
+
+
+.slRoundTrip = function(x, intimes=1) {
+#system("rm -rf ex_sqlite.sqlite")
+if (file.exists("ex_sqlite.sqlite")) file.remove("ex_sqlite.sqlite")
+Sys.sleep(1)
+stopifnot(!file.exists("ex_sqlite.sqlite"))
+library(RSQLite)
+con = dbConnect(SQLite(), "ex_sqlite.sqlite")
+mw = umicrobenchmark({
+  dbWriteTable(con, "x", data.frame(ind=1:nrow(x), x), overwrite=TRUE)
+  }, times=intimes)
+mr= umicrobenchmark(yff <- dbReadTable(con, "x"), times=intimes)
+msel = umicrobenchmark( 
+   {tmp <- dbGetQuery(con, "select * from x where ind >= 4001 and ind <= 5000")},
+   times=intimes
+   )
+dbRemoveTable(con, "x")
+dbDisconnect(con)
+list(mwrite=mw, ingFull=mr, ing1K=msel, times=intimes, method="sqlite")
+}
+
+.dtRoundTrip = function(x, intimes=1) {
+#system("rm -rf ex_dt.rda")
+if (file.exists("ex_dt.rda")) file.remove("ex_dt.rda")
+Sys.sleep(1)
+library(data.table)
+mw = umicrobenchmark({
+  dtx = data.table(x)
+  save(dtx, file="ex_dt.rda", compress=FALSE)
+  }, times=intimes)
+mr= umicrobenchmark(load("ex_dt.rda"), times=intimes)
+# at this point dtx is available
+msel = umicrobenchmark( tmp <- dtx[4001:5000,], times=intimes )
+oo = as.matrix(tmp)
+dimnames(oo) = NULL
+stopifnot(all.equal(oo, x[4001:5000,]))
+list(mwrite=mw, ingFull=mr, ing1K=msel, times=intimes, method="data.table")
+}
+
+getStats = function(times, ..., summstat = mean, rtfun=.h5RoundTrip) {
+ a1 = lapply(1:times, function(z) rtfun(...))
+ w = lapply(a1, "[[", "mwrite")
+ r = lapply(a1, "[[", "ingFull")
+ rsel = lapply(a1, "[[", "ing1K")
+ ans = list(
+   meth=a1[[1]]$method,
+   wr=summstat(sapply(w, function(x)x[,"time"]/10^6)),
+   ingFull=summstat(sapply(r, function(x)x[,"time"]/10^6)),
+   ing1K=summstat(sapply(rsel, function(x)x[,"time"]/10^6))
+   )
+  data.frame(ans)
+}
+
+benchOOM = function(NR=5000, NC=100, times=5, inseed=1234,
+  methods = list(.h5RoundTrip, .ffRoundTrip, .slRoundTrip, .dtRoundTrip, .bmRoundTrip)) {
+stopifnot(NR >= 5000) # some hardcoded indices... FIXME
+require(microbenchmark)
+nel = NR * NC
+set.seed(inseed)
+x = array(rnorm(nel), dim=c(NR,NC))
+cbind(NR=NR, NC=NC, unit="us", times=times, do.call(rbind, 
+    lapply(methods, function(z) getStats(times, x, rtfun=z))))
+}
+```
+
+The following function is a "proof of concept" that we
+can encapsulate the task of timing a variety of tasks (write
+to store, read contents of store, read a slice of 1000 records)
+for a variety of strategies (HDF5, ff, SQLite, data.table, bigmemory).
+The dot functions are hidden in this document and are very
+ad hoc.  Several of the approaches are tunable through
+setting chunk sizes and these have been hard-coded to
+arbitrarily chosen values.
+
+```{r lkbencode}
+benchOOM
+```
+
+When we run the function we get some performance data.  We can change aspects
+of the problem (number of rows, columns, number of repetitions)
+but need to attend to other aspects (such as
+effects of the environment) to
+generate really useful data on effectiveness of the approaches.
+
+Should include native R storage as well.
+In this table 'wr' column tells how long it takes to write a matrix
+of given dimensions in the given format, 'ingFull' tells how
+long it takes to ingest the full matrix, 'ing1K' tells how long
+it takes to ingest a selection of 1000 contiguous rows (4001-5000).
+
+```{r runit, eval=TRUE}
+benchOOM()
+benchOOM(NR=100000)
+```
+
+A disciplined approach to comparative evaluation would likely be
+a good candidate for the R Journal.
+
