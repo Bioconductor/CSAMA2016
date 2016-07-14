@@ -1,7 +1,7 @@
 ---
 title: "Meta-analysis"
-author: "Levi Waldron, CUNY School of Public Health"
-date: "July 14, 2016"
+author: "Levi Waldron <br> CUNY School of Public Health <br> http://www.waldronlab.org"
+date: "July 15, 2016"
 output:
   slidy_presentation: default
 ---
@@ -14,11 +14,12 @@ opts_chunk$set(cache=TRUE, autodep=TRUE)
 
 ## Outline
 
-- Preparation for meta-analysis
-- Fixed and Random Effects Synthesis
-- Assessing Heterogeneity
+- Meta-analysis
+    - Practicalities
+    - Fixed and Random Effects Synthesis
+    - Assessing Heterogeneity
 - Leave-one-dataset-in and Leave-one-dataset-out Validation of Prediction Models
-- `curatedMetagenomicData` and `MultiAssayExperiment`
+- Bioconductor resources `curatedMetagenomicData` and `MultiAssayExperiment`
 
 ## Scope: what is meta-analysis?
 
@@ -29,27 +30,18 @@ opts_chunk$set(cache=TRUE, autodep=TRUE)
 > “We understand meta-analysis as being the use of statistical techniques to combine the results of studies addressing the same question into a summary measure.”
    <br /> <br /> Villar et al. (2001)
 
-## Preparation: finding datasets
-
-- Systematic literature review
-- Gene Expression Omnibus (GEO)
-    - web page (filter by species, disease, sample size)
-    - GEOmetadb Bioconductor package (requires SQL knowledge)
-- ArrayExpress
-    - also includes many GEO datasets
-    - Bioconductor package has search features
-- InSilicoDB
-    - better curation, lower coverage
-
 ## Preparation: downloading datasets
 
 - `GEOquery::getGEO()` is a workshorse
     - maximum coverage, minimum frills
-    - all metadata included, most is irrelevant
-    - large studies limited to 256 patients per list element
-    - processed data as uploaded by authors -> list of ExpressionSets
+    - processed data and metadata as uploaded by authors
     - no probeset to gene mapping
-
+- ArrayExpress
+    - also includes many GEO datasets
+    - Bioconductor package has search features
+- InSilicoDB
+    - more curation, less coverage
+    
 ## Preparation: downloading datasets (cont'd)
 
 - A couple helpful functions from [LeviRmisc](https://github.com/lwaldron/LeviRmisc)
@@ -65,19 +57,18 @@ df[, c(1:3, 15, 16)]
 
 ## Preparation: curation
 
-- per-sample metadata must be standardized across studies
-- process is error-prone, template-based syntax checking recommendable
+- Per-sample metadata must be standardized across studies
+- Process is error-prone, template-based syntax checking recommendable
     - e.g. using the [template](https://bitbucket.org/lwaldron/curatedovariandata/src/tip/curation/ovarian/src/template_ov.csv) and [checker](https://bitbucket.org/lwaldron/curatedovariandata/src/tip/src/checkCurated.R) for [curatedOvarianData](http://www.bioconductor.org/packages/release/data/experiment/html/curatedOvarianData.html).
 
 ## Preparation: preprocessing and gene mapping
 
-- it is possible and desirable to synthesize across array platforms
+- It is possible and desirable to synthesize across array platforms
     - or spanning array and RNA-seq
-- common preprocessing is desirable but not necessary
-    - deal with non-standardized preprocessing through gene scaling, e.g. z-score
-- must map probeset IDs to common gene identifiers:
-    - if using a representative probeset for a gene, best to use the same one in each dataset
-    - alternatively, simply average redundant probesets
+- Common preprocessing is desirable but not necessary
+    - deal with non-standardized preprocessing through feature scaling, e.g. z-score
+- Must standardize gene / feature identifiers
+
 
 ## Preparation: duplicate checking
 
@@ -228,6 +219,13 @@ Leave-one-dataset-out validation of a survival signature.  ([Riester _et al._ JN
 "Improvement over random signatures (IOR)" score of gene signatures relative to random gene signatures, equalizing the influences of authors’ algorithms for generating risk scores, quality of the original training data, and gene signature size ([Waldron _et al._ JNCI 2014](http://jnci.oxfordjournals.org/cgi/content/full/dju049?ijkey=Ka4IzzSGdcMM131&keytype=ref)).   
 </small>
 
+## Meta-analysis summary
+
+- Heterogeneous studies are an asset, not a curse
+- Many alternatives for meta-analysis of genomics experiments have been proposed
+    - none as flexible or well-understood as traditional approaches
+- Data availability and curation are critical
+
 ## Resources in Bioconductor
 
 * Cancer gene expression data packages:
@@ -235,13 +233,17 @@ Leave-one-dataset-out validation of a survival signature.  ([Riester _et al._ JN
 
 * [`curatedMetagenomicData`](https://github.com/vobencha/curatedMetagenomicData/), available through `ExperimentHub` in bioc-devel
     - taxonomic and metabolic profiles from whole-metagenome shotgun sequencing
-    - ~3,000 human microbiome samples from 13 datasets
+    - ~2,400 human microbiome samples from 27 datasets, including 15 HMP body sites
     - manually curated metadata
 * Provides six `ExpressionSet` objects per dataset:
-    - 1: species-level taxonomic profiles (convertible to `phyloseq`); 
+    - 1: MetaPhlAn2 species-level taxonomic profiles (convertible to `phyloseq`); 
     - 2-3: marker presence and abundance data; and 
-    - 4-6: gene families, pathway coverage and pathway abundance.
+    - 4-6: HUMAnN2 gene families, pathway coverage and pathway abundance
 * [Manual of datasets](https://github.com/vobencha/curatedMetagenomicData/files/341411/curatedMetagenomicData.pdf)
+
+<small>
+Pasolli E _et al._: Machine Learning Meta-analysis of Large Metagenomic Datasets: Tools and Biological Insights. PLoS Comput. Biol. 2016, 12:e1004977.
+</small>
 
 ## curatedMetagenomicData and ExperimentHub
 
@@ -254,15 +256,10 @@ myquery = query(eh, "curatedMetagenomicData")
 ```{r, eval=FALSE}
 myquery
 View(mcols(myquery))
+subquery = display(myquery)
 ```
 
 ```{r, warning=FALSE, message=FALSE}
 taxabund = eh[["EH2"]]
 taxabund
 ```
-
-## Conclusions
-
-- many alternatives for meta-analysis of genomics experiments have been proposed, none as flexible or well-understood as traditional approaches
-- metafor R package is highly recommendable and well-documented ([Viechtbauer 2010](http://www.jstatsoft.org/v36/i03/paper))
-- data availability and curation are critical
