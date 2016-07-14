@@ -15,5 +15,8 @@ Data frames with list columns
 purrr  
 
 Consider writing your own packages  
+developer page on bioconductor website
+
 Watch, contribute to packages you care about  
 Twitter, stackoverflow, github to stay current   
+support.bioconductor.org, posting guide

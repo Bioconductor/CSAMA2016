@@ -5,6 +5,8 @@ title: 'Basics of ChIP-seq data analysis'
 output:
   BiocStyle::html_document:
     toc: true
+    fig_width: 3
+    fig_height: 3
 vignette: >
   % \VignetteIndexEntry{Basics of ChIP-seq data analysis}
   % \VignetteEngine{knitr::rmarkdown}
@@ -231,9 +233,9 @@ rep1.200bins
 
 We can plot coverage for 1000 bins, starting from bin 200,000.
 
-```{r simplePlot,fig.width=7, fig.height=7, out.width='.65\\linewidth', fig.align='center'}
+```{r simplePlot,fig.width=3.5, fig.height=3.5}
 plot( 200000:201000, rep1.200bins$score[200000:201000], 
-   xlab="chr6", ylab="counts per bin" )
+   xlab="chr6", ylab="counts per bin", type="l")
 ```
 
 Below, we will see more sophisticated ways of plotting coverage.
@@ -303,7 +305,7 @@ to zoom into with the *from* and *to* arguments. The
 *transcriptAnnotation* argument allows to put the gene symbols in the
 plot.
 
-```{r Visualisation_Gviz, fig.width=5, fig.height=3, out.width='.95\\linewidth', fig.align='center'}
+```{r Visualisation_Gviz, fig.width=5, fig.height=3, dpi=200}
 plotTracks(c( bm, AT),
            from=122530000, to=122900000,
            transcriptAnnotation="symbol", window="auto", 
@@ -337,7 +339,7 @@ observe a uniform coverage in the case of the input track and pronounced
 peaks of enrichment H3K27ac in promoter and intergenic regions.
 Importantly, H3K27ac enriched regions are easily identified.
 
-```{r dataTrackPlot, fig.width=5, fig.height=4, out.width='.95\\linewidth', fig.align='center'}
+```{r dataTrackPlot, fig.width=4, fig.height=4, dpi=200}
 plotTracks(c(input.track, rep1.track, rep2.track, bm, AT),
            from=122530000, to=122900000,
            transcriptAnnotation="symbol", window="auto", 
@@ -395,7 +397,7 @@ peaks2.track = AnnotationTrack(peaks.rep2,
 
 We visualise the *Nanog* locus.
 
-```{r PeaksInBrowserPlot_nanog, fig.width=5, fig.height=4, out.width='.95\\linewidth', fig.align='center'}
+```{r PeaksInBrowserPlot_nanog, fig.width=4, fig.height=3, dpi=200}
 plotTracks(c(input.track, rep1.track, peaks1.track,
              rep2.track, peaks2.track, bm, AT),
            from=122630000, to=122700000,
@@ -431,7 +433,7 @@ ov = min( length(unique( queryHits(ovlp) )), length(unique( subjectHits(ovlp) ) 
 We draw this as a Venn diagram, using the *draw.pairwise.venn* function
 from the *VennDiagram* package.
 
-```{r VennDiagram1, fig.width=4, fig.height=4, out.width='.75\\linewidth', fig.align='center'}
+```{r VennDiagram1, fig.width=3.5, fig.height=3.5, dpi=200}
 library(VennDiagram)
 
 draw.pairwise.venn( 
@@ -446,7 +448,7 @@ draw.pairwise.venn(
 We will focus only on peaks identified in both replicates (hereafter
 refered to as enriched areas). The enriched areas are colored in green.
 
-```{r EnrichedRegionsIsolation, fig.width=5, fig.height=5, out.width='.95\\linewidth', fig.align='center'}
+```{r EnrichedRegionsIsolation, fig.width=4, fig.height=4, dpi=200}
 enriched.regions = Reduce(subsetByOverlaps, list(peaks.rep1, peaks.rep2))
 
 enr.reg.track = AnnotationTrack(enriched.regions,
@@ -620,7 +622,7 @@ H3K27ac.p.matrix = matrix( H3K27ac.p, nrow=nrow(pos.TSS),
 Finally, we plot the result as a heatmap and as a plot of average values
 per each tile for all the included promoters.
 
-```{r Aver_plot, fig.width=8, fig.height=10, out.width='.70\\linewidth', fig.align='center', dev.args = list(pointsize=11)}
+```{r Aver_plot, fig.width=8, fig.height=10, dpi=200, dev.args = list(pointsize=11)}
 colors = colorRampPalette(c('white','red','gray','black'))(100) 
 
 layout(mat=matrix(c(1,2,0,3), 2, 2), 

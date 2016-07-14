@@ -5,12 +5,12 @@ Jenny Bryan
 
 Please see <http://happygitwithr.com> for all material. Here's the underlying GitHub repo: <https://github.com/jennybc/happy-git-with-r>.
 
-Presumes that alot of installation, verification, and early Git/GitHub/RStudio use has happened.
+Presumes that alot of installation, verification, and early Git/GitHub/RStudio use has happened. Which we did in a previous lab.
 
-We'll work from the **Early Usage** section:
+We'll work from the **Workflows** section:
 
--   [Test drive R Markdown](http://happygitwithr.com/github-acct.html)
+-   [Test drive R Markdown](http://happygitwithr.com/rmd-test-drive.html)
 -   [Render an R script](http://happygitwithr.com/r-test-drive.html)
--   *Currently external resource!* [The unreasonable effectiveness of GitHub browsability](http://stat545.com/bit006_github-browsability-wins.html)
+-   [Make a GitHub repo browsable](http://happygitwithr.com/make-a-github-repo-browsable.html)
 
 There should be time for an independent activity. They can choose from **Tutorial prompts** section of Happy Git.
