@@ -1,0 +1,53 @@
+---
+title: "Gapminder Notebook"
+output: html_notebook
+---
+
+gapminder
+=========
+
+```{r setup, include = FALSE, cache = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, dpi = 300)
+## so jittered figs don't always appear to be changed
+set.seed(1)
+```
+
+Playing with the [`gapminder`](https://github.com/jennybc/gapminder) data package.
+
+Load it and test drive with some data aggregation and plotting:
+
+```{r test-drive}
+library("gapminder")
+suppressPackageStartupMessages(library("dplyr"))
+
+gapminder %>%
+    filter(year == 2007) %>%
+    group_by(continent) %>%
+    summarise(lifeExp = median(lifeExp))
+```
+
+```{r}
+library("ggplot2")
+ggplot(gapminder, aes(x = continent, y = lifeExp)) +
+  geom_boxplot(outlier.colour = "hotpink") +
+  geom_jitter(position = position_jitter(width = 0.1, height = 0), alpha = 1/4)
+
+```
+
+### How to use color scheme in `ggplot2`
+
+Provide `country_colors` to `scale_color_manual()` like so:
+
+```{r scale-color-manual, eval = FALSE}
+... + scale_color_manual(values = country_colors) + ...
+```
+
+```{r demo-country-colors-ggplot2}
+library("ggplot2")
+
+ggplot(subset(gapminder, continent != "Oceania"),
+       aes(x = year, y = lifeExp, group = country, color = country)) +
+  geom_line(lwd = 1, show.legend = FALSE) + facet_wrap(~ continent) +
+  scale_color_manual(values = country_colors) +
+  theme_bw() + theme(strip.text = element_text(size = rel(1.1)))
+```

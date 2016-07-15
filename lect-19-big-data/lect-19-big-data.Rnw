@@ -26,6 +26,7 @@ suppressPackageStartupMessages({
     library(BiocParallel)
     library(Rsamtools)
     library(GenomicFiles)
+    register(MulticoreParam(5))
 })
 @ 
 
@@ -34,15 +35,19 @@ suppressPackageStartupMessages({
 \maketitle
 
 \begin{frame}{Performance \& Parallel Evaluation}
-  \R{} code
+  \begin{quotation}
+    My code is slow, how do I make it run faster?
+  \end{quotation}
+  Write better \R{} code
   \begin{itemize}
   \item Correct, then efficient
+  \item 10-1000$\times$ speed-up, great satisfaction
   \end{itemize}
   Parallel evaluation
   \begin{itemize}
-  \item Computer
-  \item Cluster
-  \item Cloud
+  \item Computer: 5-10$\times$ speed-up, 2-5$\times$ frustration
+  \item Cluster: 10-100$\times$ speed-up, 10-20$\times$ frustration
+  \item Cloud: 100+$\times$ speed-up, 20-50$\times$ frustration
   \end{itemize}
 \end{frame}
 
@@ -153,6 +158,19 @@ identical(res1, res2)
       use in \Rcode{bplapply()}.
     \item Sensible default values.
     \end{itemize}
+\end{frame}
+
+\begin{frame}{Parallel evaluation: errors and debugging}
+  \begin{itemize}
+  \item \Rcode{bptry()} to capture partial results and errors.
+  \item \Rcode{BPREDO} argument to \Rcode{bplapply()} to evaluate just
+    the errors.
+  \item \Rcode{BPPARAM=SerialParam()} to make problematic code run
+    locally for easy debugging.
+  \item See the vignette
+    \href{http://bioconductor.org/packages/release/bioc/vignettes/BiocParallel/inst/doc/Errors_Logs_And_Debugging.pdf}{Errors,
+      Logs, and Debugging}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}{Parallel evaluation: processing large genomic files}
