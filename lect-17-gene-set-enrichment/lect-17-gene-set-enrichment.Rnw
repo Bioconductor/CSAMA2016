@@ -28,8 +28,7 @@
     expressed (DE) genes in the set more common than expected?
   \item Functional class scoring (FCS) -- summarize statistic of DE of
     genes in a set, and compare to null
-  \item Pathway topology (PT) -- include pathway knowledge in
-    assessing DE of genes in a set
+  \item Issues with sequence data?
   \end{itemize}
 \end{frame}
 
@@ -194,28 +193,7 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}{Approach 5: pathway topology}
-  \begin{columns}
-    \column{.5\textwidth}
-    \begin{itemize}
-    \item Incorporate pathway topology (e.g., interactions between
-      gene products) into signficance testing
-    \end{itemize}
-    E.g., Tarca et al., 2009, \Biocpkg{SPIA}
-    \begin{itemize}
-    \item Signaling Pathway Impact Analysis
-    \item Combined evidence: pathway over-representation $P_{NDE}$;
-      unusual signaling $P_{PERT}$ (equation 1 of Tarca et al.)
-    \end{itemize}
-    \column{.5\textwidth}
-    \includegraphics[width=\textwidth]{our_figures/SPIA.png}
-    \par {\small Evidence plot, colorectal cancer. Points: pathway
-      gene sets.  Significant after Bonferroni (red) or FDR (blue)
-      correction.}
-  \end{columns}
-\end{frame}
-
-\begin{frame}{Approach 6: issues with sequence data?}
+\begin{frame}{Approach 5: issues with sequence data?}
   \begin{columns}
     \column{.5\textwidth}
     \begin{itemize}
@@ -236,7 +214,7 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Approach 7: \emph{de novo} discovery}
+\begin{frame}{Approach 6: \emph{de novo} discovery}
   \begin{itemize}
   \item So far: analogous to supervised machine learning, where
     pathways are known in advance
@@ -279,6 +257,7 @@
                    \Biocpkg{limma}\Rfunction{::roast} \\
     Pathway topology & \Biocpkg{SPIA} \\
     Sequence-specific & \Biocpkg{goseq} \\
+    Visualization & \Biocpkg{PATHVIEW} \\
     \hline
   \end{tabular}
 \end{frame}
