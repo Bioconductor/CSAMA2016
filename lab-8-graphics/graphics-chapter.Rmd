@@ -1,65 +1,8 @@
-% To compile this:
-% rm(list=ls()); library('knitr'); pat_md(); knit('rgraphics.Rnw')
-
-```{r initialize, cache = FALSE, echo = FALSE, message = FALSE, error = FALSE, warning = FALSE}
-source("../chapter-setup.R"); chaptersetup("rgraphics.Rnw", "3")
-```
-%
-
-% ----To do------
-% \begin{itemize}
-% \item along chromosome data (ggbio)
-% \item Scan this lab for exercises to include in the chapter:
-% \url{https://web.stanford.edu/class/bios221/labs/graphics/lab_2_graphics.html}
-% \end{itemize}
 
 \chapter{High Quality Graphics in R}
 \label{Chap:3}
-```{r introplot, echo=FALSE, warning = FALSE, fig.width = 4.2, fig.height = 4.2}
-library("xkcd")
-library("showtext")
-library("sysfonts")
-library("dplyr")
-introplotdata = c(seq(-8, 1, length=25)^2, rep(1, 5), seq(1, 5,length=25)^2)
-xrange  = range(1:55)
-yrange  = range(introplotdata)
-ratioxy = diff(xrange) / diff(yrange)
-ratioxy = .1
-mapping = aes(x = x,
-               y = y,
-               scale = scale,
-               ratioxy = ratioxy,
-               angleofspine = angleofspine,
-               anglerighthumerus = anglerighthumerus,
-               anglelefthumerus = anglelefthumerus,
-               anglerightradius = anglerightradius,
-               angleleftradius = angleleftradius,
-               anglerightleg =  anglerightleg,
-               angleleftleg = angleleftleg,
-               angleofneck = angleofneck)
-dataman = data_frame( x= c(30), y=c(400),
-                  scale = c(100),
-                  ratioxy = ratioxy,
-                  angleofspine =  - pi / 2 ,
-                  anglerighthumerus = -pi/6,
-                  anglelefthumerus = pi + pi/6,
-                  anglerightradius = 0,
-                  angleleftradius = 0,
-                  angleleftleg = 3*pi/2  + pi / 12 ,
-                  anglerightleg = 3*pi/2  - pi / 12,
-                  angleofneck = 3 * pi / 2 - pi/10)
-ggplot() + geom_line(aes(x=1:55, y=introplotdata^2), size=2) +
-   xkcdaxis(c(0, 50), c(0, 1000)) + xlab("Time to make plot in minutes") +
-   ylab("Time to understand plot in minutes") + xkcdman(mapping, dataman)
-```
 
-\begin{marginfigure}[-3cm]
-\includegraphics[width=\linewidth]{chap3-r_introplot-1}
-\caption{An elementary law of visualisation.}
-\label{rgraphics:fig:introfig}
-\end{marginfigure}
 
-\fixme{Review this when chapter is finished:} 
 
 There are two important types of data visualization. The first enables a scientist to
 effectively explore the data and make discoveries about the complex processes at work. The
