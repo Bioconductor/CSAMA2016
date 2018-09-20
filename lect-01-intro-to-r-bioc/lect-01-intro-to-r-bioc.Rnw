@@ -218,10 +218,10 @@ se[, se$Treatment == "Control"]  # Control samples only
   \begin{itemize}
   \item Huber et al. (2015) Orchestrating high-throughput genomic
     analysis with \Bioconductor. Nature Methods
-    12:\href{http://dx.doi.org/10.1038/nmeth.3252}{115-121}.
+    12:\href{https://doi.org/10.1038/nmeth.3252}{115-121}.
   \item Lawrence et al. (2013) Software for Computing and Annotating
     Genomic Ranges. PLoS Comput Biol 9(8):
-    \href{http://dx.doi.org/10.1371/journal.pcbi.1003118}{e1003118}.
+    \href{https://doi.org/10.1371/journal.pcbi.1003118}{e1003118}.
   \end{itemize}
 
 \end{frame}
